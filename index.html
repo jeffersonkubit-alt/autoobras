@@ -1953,10 +1953,6 @@ const bindEvents = () => {
     n.addEventListener('click', () => navigate(n.dataset.page));
   });
 
-  // Login
-  $('#login-btn').addEventListener('click', doLogin);
-  $('#login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-
   // Modal obra close
   $('#mo-close').addEventListener('click', closeObraModal);
   $('#modal-obra').addEventListener('click', (e) => {
@@ -2149,11 +2145,15 @@ window.addEventListener('DOMContentLoaded', () => {
   $('#loading-screen').style.display = 'none';
   $('#login-screen').style.display = 'flex';
 
-  // Expose globals for inline onclick
+  // Expor globais para onclick inline
   window.openObra = openObra;
   window.openChamado = openChamado;
   window.closeSearch = closeSearch;
   window.navigate = navigate;
+
+  // Bind login ANTES do app carregar
+  $('#login-btn').addEventListener('click', doLogin);
+  $('#login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 });
 </script>
 </body>
