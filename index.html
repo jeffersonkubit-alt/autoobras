@@ -386,11 +386,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 </div>
 
 <script>
-/* ═══════════════════════════════════════════════════════════
-   CONFIGURAÇÕES
-═══════════════════════════════════════════════════════════ */
+/* CONFIGURAC */
 const SENHA = '1993';
-
 const SENHAS = {
   'Jefferson': 'HmKKvMbIWD',
   'Miguel':    'MIDs4VPukV',
@@ -400,7 +397,6 @@ const SENHAS = {
 };
 
 var USER_LOGADO = '';
-
 function fazerLogin() {
   var nome = document.getElementById('login-nome').value;
   var senha = document.getElementById('login-senha').value;
@@ -418,7 +414,6 @@ function fazerLogin() {
   iniciarApp();
 }
 const COLABORADORES = ['Jefferson','Miguel','Victoria','Daniel','Guilherme'];
-
 const STAGES = [
   'Novos clientes','Elaboração de projetos','Aguardando infraestrutura',
   'Executando infraestrutura','Aguardando instalação','Instalação de equipamentos',
@@ -458,10 +453,7 @@ const LBL = {ok:'Concluído',parcial:'Parcial',pend:'Pendente'};
 const SAC_ST = {aberto:'Aberto',andamento:'Em andamento',resolvido:'Resolvido'};
 const SAC_COR = {aberto:'var(--red)',andamento:'var(--amber)',resolvido:'var(--green)'};
 const SAC_CL = ['Problema identificado e registrado','Solução aplicada','Reteste realizado','Cliente notificado'];
-
-/* ═══════════════════════════════════════════════════════════
-   GERAÇÃO DE CHECKLIST
-═══════════════════════════════════════════════════════════ */
+/* GERAC */
 function gerarCL(stage, equips, clAnterior, clPorEtapa) {
   var fixos = (CL_FIXO[stage]||[]).map(function(n){return mkI(n,null);});
   if (stage === 'Executando infraestrutura') {
@@ -492,12 +484,12 @@ function gerarCL(stage, equips, clAnterior, clPorEtapa) {
   // Coletar todos os pendentes de todas as etapas anteriores
   var todosPendentes = [];
 
-  // Do clPorEtapa — apenas etapas ANTERIORES à etapa atual
+  // Do clPorEtapa  apenas etapas ANTERIORES a etapa atual
   var idxStage = STAGES.indexOf(stage);
   if(clPorEtapa) {
     Object.keys(clPorEtapa).forEach(function(etapa){
       var idxE = STAGES.indexOf(etapa);
-      if(idxE >= idxStage) return; // ignorar etapas futuras ou a própria
+      if(idxE >= idxStage) return; // ignorar etapas futuras ou a propria
       (clPorEtapa[etapa]||[]).forEach(function(ci){
         if(ci.status !== 'ok') {
           var jaExiste = todosPendentes.some(function(p){ return p.name === ci.name; });
@@ -515,7 +507,7 @@ function gerarCL(stage, equips, clAnterior, clPorEtapa) {
     });
   }
 
-  // Adicionar pendentes no topo, sem duplicar itens que já existem no novo CL
+  // Adicionar pendentes no topo, sem duplicar itens que ja existem no novo CL
   todosPendentes.forEach(function(ci){
     var jaExiste = fixos.some(function(f){ return f.name === ci.name; });
     if(!jaExiste) fixos = [ci].concat(fixos);
@@ -524,10 +516,7 @@ function gerarCL(stage, equips, clAnterior, clPorEtapa) {
   return fixos;
 }
 function mkI(name,cat){return {name:name,cat:cat||null,status:'pend',obs:'',diario:[]};}
-
-/* ═══════════════════════════════════════════════════════════
-   FIREBASE — configuração
-═══════════════════════════════════════════════════════════ */
+/* FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyCmHcZ_kg26jan6yfCcKjfP0uMg3AACX54",
   authDomain: "autoobras-3acf9.firebaseapp.com",
@@ -540,7 +529,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
 
-/* Histórico de equipamentos */
+/* Historico de equipamentos */
 var _eqHistCache = {};
 
 function carregarHistEq() {
@@ -572,19 +561,15 @@ function buscarSugestoesEq(cat, texto) {
     .slice(0,8);
 }
 
-// Carregar histórico de equipamentos em background
+// Carregar historico de equipamentos em background
 setTimeout(function(){ carregarHistEq(); }, 500);
 
-/* ═══════════════════════════════════════════════════════════
-   DADOS — arrays em memória (espelho do Firestore)
-═══════════════════════════════════════════════════════════ */
+/* DADOS */
 var obras = [];
 var chamados = [];
 var gHist = [];
 
-/* ═══════════════════════════════════════════════════════════
-   FIRESTORE — funções de persistência
-═══════════════════════════════════════════════════════════ */
+/* FIRESTORE */
 
 // Salvar obra completa
 function salvarObra(obra) {
@@ -598,7 +583,7 @@ function salvarChamado(chamado) {
   return db.collection('chamados').doc(String(chamado.id)).set(doc);
 }
 
-// Salvar histórico global
+// Salvar historico global
 function salvarHist(entry) {
   return db.collection('historico').add(entry);
 }
@@ -613,13 +598,10 @@ function excluirChamadoDB(id) {
   return db.collection('chamados').doc(String(id)).delete();
 }
 
-/* ═══════════════════════════════════════════════════════════
-   CARREGAMENTO INICIAL — listeners em tempo real
-═══════════════════════════════════════════════════════════ */
+/* CARREGAMENTO INICIAL */
 function iniciarApp() {
   var prog = document.getElementById('loading-bar');
   if(prog) prog.style.width = '30%';
-
   var obrasCarregadas = false;
   var chamadosCarregados = false;
   var histCarregado = false;
@@ -653,11 +635,10 @@ function iniciarApp() {
     obrasCarregadas = true;
     if(prog) prog.style.width = '60%';
     verificarPronto();
-    // re-renderizar se app já estiver visível
+    // re-renderizar se app ja estiver visivel
     var app = document.getElementById('app-layout');
     if(app && app.style.display !== 'none') renderKanban();
   }, function(err){ console.error('Obras:', err); obrasCarregadas=true; verificarPronto(); });
-
   // Listener chamados em tempo real
   db.collection('chamados').onSnapshot(function(snap) {
     chamados = [];
@@ -677,8 +658,7 @@ function iniciarApp() {
       if(sacEl && sacEl.innerHTML !== '') renderSAC();
     }
   }, function(err){ console.error('Chamados:', err); chamadosCarregados=true; verificarPronto(); });
-
-  // Listener histórico em tempo real
+  // Listener historico em tempo real
   db.collection('historico').limit(50).onSnapshot(function(snap) {
     gHist = [];
     snap.forEach(function(doc){ gHist.push(doc.data()); });
@@ -692,7 +672,7 @@ function iniciarApp() {
     verificarPronto(); 
   });
 
-  // Timeout de segurança — se não carregar em 8s, abre mesmo assim
+  // Timeout de seguranca  se nao carregar em 8s, abre mesmo assim
   setTimeout(function(){
     if(!obrasCarregadas || !chamadosCarregados || !histCarregado){
       console.warn('Timeout de carregamento — abrindo sem dados completos');
@@ -702,9 +682,7 @@ function iniciarApp() {
   }, 8000);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   DRAG & DROP
-═══════════════════════════════════════════════════════════ */
+/* DRAG */
 var dragId = null;
 
 function startDrag(e, id) {
@@ -767,15 +745,11 @@ function onDrop(e, stage) {
   salvarHist({msg:'"'+o.name+'" movida para '+stage,dt:agora(),user:USER_LOGADO||'Você',ts:Date.now()});
 }
 
-/* ═══════════════════════════════════════════════════════════
-   KANBAN
-═══════════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════════
-   CONTATOS
-═══════════════════════════════════════════════════════════ */
+/* KANBAN */
+/* CONTATOS */
 function diasSemContato(obra) {
   if(!obra.contatos||!obra.contatos.length) {
-    // calcular desde criação (primeiro hist)
+    // calcular desde criacao (primeiro hist)
     return 999;
   }
   var ultimo = obra.contatos[0];
@@ -786,7 +760,7 @@ function diasSemContato(obra) {
 }
 
 function alertaSemContato(obra) {
-  // só alertar obras ativas (não Novos clientes e não Obra entregue)
+  // so alertar obras ativas (nao Novos clientes e nao Obra entregue)
   if(obra.stage==='Novos clientes'||obra.stage==='Obra entregue') return null;
   var dias = diasSemContato(obra);
   if(dias>=5) return dias;
@@ -837,7 +811,7 @@ function salvarContato(id){
 }
 
 function renderAgendaContatos(){
-  // listar obras com próximo contato agendado, ordenado por data
+  // listar obras com proximo contato agendado, ordenado por data
   var agenda=[];
   obras.forEach(function(o){
     if(!o.contatos||!o.contatos.length) return;
@@ -866,9 +840,7 @@ function renderAgendaContatos(){
   '</div>';
 }
 
-/* ═══════════════════════════════════════════════════════════
-   DASHBOARD
-═══════════════════════════════════════════════════════════ */
+/* DASHBOARD */
 function renderDashboard() {
   var el = document.getElementById('dashboard-content');
   if(!el) return;
@@ -879,7 +851,7 @@ function renderDashboard() {
   });
   var maxF = Math.max.apply(null, funil.map(function(e){return e.count;})) || 1;
 
-  // dados para responsáveis
+  // dados para responsaveis
   var respMap = {};
   obras.forEach(function(o){
     if(!respMap[o.resp]) respMap[o.resp]={ativas:0,entregues:0};
@@ -889,12 +861,11 @@ function renderDashboard() {
   var resps = Object.keys(respMap).sort(function(a,b){ return (respMap[b].ativas+respMap[b].entregues)-(respMap[a].ativas+respMap[a].entregues); });
   var maxR = Math.max.apply(null, resps.map(function(r){return respMap[r].ativas+respMap[r].entregues;})) || 1;
 
-  // stats rápidos
+  // stats rapidos
   var semContato = obras.filter(function(o){return alertaSemContato(o)!==null;}).length;
   var chamAbertos = chamados.filter(function(c){return c.status!=='resolvido';}).length;
   var aguardAq = obras.filter(function(o){return o.stage==='Aguardando instalação';}).length;
   var entregues = obras.filter(function(o){return o.stage==='Obra entregue';}).length;
-
   el.innerHTML =
     '<div id="dash-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:24px"></div>'+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">'+
@@ -915,17 +886,14 @@ function renderDashboard() {
       '<div style="font-size:11px;color:var(--text2);margin-bottom:16px">Visão geral dos chamados de suporte</div>'+
       '<div id="sac-dash"></div>'+
     '</div>';
-
   // stats
   document.getElementById('dash-stats').innerHTML =
     '<div style="background:var(--bg3);border-radius:var(--r);padding:14px"><div style="font-size:22px;font-weight:600;font-family:monospace;margin-bottom:3px">'+obras.length+'</div><div style="font-size:12px;color:var(--text2)">Total de obras</div></div>'+
     '<div style="background:var(--bg3);border-radius:var(--r);padding:14px"><div style="font-size:22px;font-weight:600;font-family:monospace;color:#4f8ef7;margin-bottom:3px">'+obras.filter(function(o){return o.stage!=='Novos clientes'&&o.stage!=='Obra entregue';}).length+'</div><div style="font-size:12px;color:var(--text2)">Em andamento</div></div>'+
     '<div style="background:var(--bg3);border-radius:var(--r);padding:14px"><div style="font-size:22px;font-weight:600;font-family:monospace;color:#f5a623;margin-bottom:3px">'+semContato+'</div><div style="font-size:12px;color:var(--text2)">Sem contato +5d</div></div>'+
     '<div style="background:var(--bg3);border-radius:var(--r);padding:14px"><div style="font-size:22px;font-weight:600;font-family:monospace;color:#f56565;margin-bottom:3px">'+chamAbertos+'</div><div style="font-size:12px;color:var(--text2)">SAC em aberto</div></div>';
-
   // cores por etapa
   var etapaColors = ['#4f8ef7','#a78bfa','#f5a623','#f5a623','#f56565','#3ecf8e','#3ecf8e','#3ecf8e'];
-
   // funil bars
   var funilEl = document.getElementById('funil-bars');
   funilEl.innerHTML = funil.map(function(e,i){
@@ -941,7 +909,6 @@ function renderDashboard() {
       '</div>'+
     '</div>';
   }).join('');
-
   // SAC painel
   var sacEl = document.getElementById('sac-dash');
   if(sacEl) {
@@ -964,7 +931,6 @@ function renderDashboard() {
         '<span style="display:flex;align-items:center;gap:5px"><span style="width:9px;height:9px;border-radius:50%;background:#3ecf8e;display:inline-block"></span><span style="color:var(--text2)">Resolvidos</span> <strong style="color:var(--text)">'+resolvidos.length+'</strong></span>'+
         '<span style="margin-left:auto;color:var(--text2);font-size:11px;font-family:monospace">'+pctRes+'% resolvidos</span>'+
       '</div>';
-
     // lista dos abertos + em andamento
     var urgentes = abertos.concat(andamento).slice(0,5);
     var listaHTML = urgentes.length===0
@@ -981,11 +947,10 @@ function renderDashboard() {
             '<span style="font-size:10px;padding:2px 8px;border-radius:20px;background:'+cor+'20;color:'+cor+';border:1px solid '+cor+'50;white-space:nowrap;margin-left:10px">'+lbl+'</span>'+
           '</div>';
         }).join('');
-
     sacEl.innerHTML = barHTML + listaHTML;
   }
 
-  // responsável bars
+  // responsavel bars
   var respColors = ['#4f8ef7','#3ecf8e','#a78bfa','#f5a623','#f56565','#f97fa4'];
   var respEl = document.getElementById('resp-bars');
   if(!resps.length){
@@ -1056,16 +1021,13 @@ function renderKanban() {
   var aguardAq=obras.filter(function(o){return o.stage==='Aguardando instalação';}).length;
   var and=obras.filter(function(o){return o.stage!=='Novos clientes'&&o.stage!=='Obra entregue';}).length;
   var ent=obras.filter(function(o){return o.stage==='Obra entregue';}).length;
-
   document.getElementById('stats-row').innerHTML =
     '<div class="stat"><div class="stat-val">'+tot+'</div><div class="stat-label">Total</div></div>'+
     '<div class="stat"><div class="stat-val" style="color:var(--accent)">'+and+'</div><div class="stat-label">Em andamento</div></div>'+
     '<div class="stat"><div class="stat-val" style="color:var(--amber)">'+aguardAq+'</div><div class="stat-label">Aguard. aquisição</div></div>'+
     '<div class="stat"><div class="stat-val" style="color:var(--green)">'+ent+'</div><div class="stat-label">Entregues</div></div>';
-
   var board = document.getElementById('kanban-board');
   board.innerHTML = '';
-
   STAGES.forEach(function(stage, si) {
     var c = SC[si];
     var stO = obras.filter(function(o){return o.stage===stage;});
@@ -1077,7 +1039,6 @@ function renderKanban() {
     body.addEventListener('dragover', function(e){onDragOver(e,stage);});
     body.addEventListener('drop', function(e){onDrop(e,stage);});
     col.innerHTML = '<div class="col-head" style="background:'+c.bg+'"><span class="col-title" style="color:'+c.tx+'">'+stage+'</span><span class="col-count" style="color:'+c.tx+'">'+stO.length+'</span></div>';
-
     stO.forEach(function(o) {
       var clProprio = o.cl.filter(function(c){return !c.herdado;});
       var tot2=clProprio.length;
@@ -1094,14 +1055,12 @@ function renderKanban() {
         '<div class="card-name">'+o.name+'</div>'+
         (o.prop?'<div class="card-prop">'+o.prop+'</div>':'')+
         '<div class="card-tags">'+
-
           (alertaSemContato(o)!==null?'<span class="tag-sem-contato"><i class="ti ti-phone-off"></i> '+alertaSemContato(o)+'d sem contato</span>':'')+
           (parc>0?'<span class="tag tag-amber">'+parc+' parcial</span>':'')+
           (herdPend>0?'<span class="tag tag-amber" style="border:1px solid rgba(245,166,35,.4)"><i class="ti ti-clock-exclamation" style="font-size:10px"></i> '+herdPend+' pendente'+(herdPend>1?'s':'')+' anterior'+(herdPend>1?'es':'')+'</span>':'')+
           '<span class="tag tag-gray"><i class="ti ti-user"></i> '+o.resp+'</span>'+
         '</div>'+
         (pct>=0?'<div class="prog-wrap"><div class="prog-fill" style="width:'+pct+'%;background:'+(pct===100?'var(--green)':'var(--accent)')+'"></div></div><div class="prog-text">'+done+'/'+tot2+' · '+pct+'%'+(herdPend>0?' · <span style="color:var(--amber)">'+herdPend+' pendente'+(herdPend>1?'s':'')+' anterior'+(herdPend>1?'es':'')+'</span>':'')+'</div>':'');
-
       card.addEventListener('click', function(e){
         if(e.target.closest('.card-grip')) return;
         openObra(o.id);
@@ -1111,7 +1070,6 @@ function renderKanban() {
       grip.setAttribute('draggable','true');
       grip.addEventListener('dragstart', function(e){startDrag(e,o.id);});
       grip.addEventListener('dragend', endDrag);
-
       body.appendChild(card);
     });
 
@@ -1120,9 +1078,7 @@ function renderKanban() {
   });
 }
 
-/* ═══════════════════════════════════════════════════════════
-   MODAL OBRA
-═══════════════════════════════════════════════════════════ */
+/* MODAL OBRA */
 function openObra(id) {
   var o = obras.find(function(x){return x.id===id;}); if(!o) return;
   mHead(o.name, o.prop||'',
@@ -1156,9 +1112,7 @@ function openObra(id) {
   analisar(id);
 }
 
-/* ═══════════════════════════════════════════════════════════
-   RESUMO
-═══════════════════════════════════════════════════════════ */
+/* RESUMO */
 function openResumo(id) {
   var o = obras.find(function(x){return x.id===id;}); if(!o) return;
   mHead('Resumo — '+o.name, o.prop||'',
@@ -1197,7 +1151,6 @@ function openResumo(id) {
   document.getElementById('mbody').innerHTML =
     '<div class="rk"><span class="rk-k">Etapa</span><span>'+o.stage+'</span></div>'+
     '<div class="rk"><span class="rk-k">Responsável</span><span>'+o.resp+'</span></div>'+
-
     '<div class="rk"><span class="rk-k">Progresso</span><div style="flex:1">'+
       '<div style="display:flex;gap:10px;font-size:12px;margin-bottom:6px">'+
         '<span style="color:var(--green)"><i class="ti ti-check"></i> '+done+'</span>'+
@@ -1211,9 +1164,7 @@ function openResumo(id) {
     '<div class="sec">Checklist atual</div>'+clR;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   EDITAR EQUIPAMENTOS
-═══════════════════════════════════════════════════════════ */
+/* EDITAR EQUIPAMENTOS */
 var _eqEdit={}, _editId=null;
 
 function openEditar(id) {
@@ -1239,7 +1190,7 @@ function salvarEditar(){
   CATS.forEach(function(c){ cat[c.key]=(_eqEdit[c.key]||[]).filter(function(i){return i.nome.trim();}); });
   var tem=Object.values(cat).some(function(a){return a.length>0;});
   o.equips=tem?{categorias:cat}:null;
-  // Salvar equipamentos no histórico
+  // Salvar equipamentos no historico
   if(o.equips && o.equips.categorias) {
     CATS.forEach(function(c){
       (o.equips.categorias[c.key]||[]).forEach(function(i){
@@ -1254,9 +1205,7 @@ function salvarEditar(){
   closeModal();
 }
 
-/* ═══════════════════════════════════════════════════════════
-   NOVA OBRA
-═══════════════════════════════════════════════════════════ */
+/* NOVA OBRA */
 var _eqNova={};
 
 function openNova(){
@@ -1269,7 +1218,6 @@ function openNova(){
       '<div class="field"><label>Nº da proposta</label><input id="nprop" placeholder="PROP-2025-010"></div>'+
       '<div class="field"><label>Responsável</label><select id="nr">'+COLABORADORES.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('')+'</select></div>'+
     '</div>'+
-
     '<hr style="height:1px;background:var(--border);border:none;margin:16px 0">'+
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
       '<div class="sec" style="margin-bottom:0">Equipamentos e materiais</div>'+
@@ -1295,9 +1243,7 @@ function criarObra(){
   renderKanban(); closeModal();
 }
 
-/* ═══════════════════════════════════════════════════════════
-   HELPERS EQUIPAMENTOS
-═══════════════════════════════════════════════════════════ */
+/* HELPERS EQUIPAMENTOS */
 function catBlock(cat, pool, ctx) {
   var rows=(pool[cat.key]||[]).map(function(eq,i){return eqRow(ctx,cat.key,i,eq);}).join('');
   return '<div class="cat-block">'+
@@ -1320,10 +1266,7 @@ function pool(ctx){return ctx==='nova'?_eqNova:_eqEdit;}
 function updEq(ctx,cat,idx,f,v){var p=pool(ctx);if(p[cat]&&p[cat][idx]!==undefined)p[cat][idx][f]=v;}
 function addEq(ctx,cat){var p=pool(ctx);p[cat].push({nome:'',qtd:'',unidade:'un',ehCabo:false});document.getElementById(ctx+'-eqs-'+cat).innerHTML=p[cat].map(function(eq,i){return eqRow(ctx,cat,i,eq);}).join('');}
 function delEq(ctx,cat,idx){var p=pool(ctx);p[cat].splice(idx,1);document.getElementById(ctx+'-eqs-'+cat).innerHTML=p[cat].map(function(eq,i){return eqRow(ctx,cat,i,eq);}).join('');}
-
-/* ═══════════════════════════════════════════════════════════
-   CHECKLIST
-═══════════════════════════════════════════════════════════ */
+/* CHECKLIST */
 function renderCL(obra) {
   var cl=obra.cl;
   if(!cl||!cl.length) return '<div class="empty-cl"><i class="ti ti-circle-check" style="margin-right:6px"></i>Sem checklist nesta etapa.</div>';
@@ -1398,9 +1341,7 @@ function renderDiario(diario){
     }).join('');
 }
 
-/* ═══════════════════════════════════════════════════════════
-   MOVER ETAPA
-═══════════════════════════════════════════════════════════ */
+/* MOVER ETAPA */
 function moverEtapa(id,novaEtapa){
   var o=obras.find(function(x){return x.id===id;}); if(!o) return;
   var ant=o.stage;
@@ -1409,7 +1350,7 @@ function moverEtapa(id,novaEtapa){
   if(!o.clPorEtapa) o.clPorEtapa={};
   o.clPorEtapa[ant] = JSON.parse(JSON.stringify(o.cl));
 
-  // Gerar checklist sempre — restaurando salvo OU novo, mas sempre com pendentes acumulados
+  // Gerar checklist sempre  restaurando salvo OU novo, mas sempre com pendentes acumulados
   if(o.clPorEtapa[novaEtapa]) {
     // Restaurar snapshot da etapa mas adicionar pendentes de outras etapas
     o.cl = JSON.parse(JSON.stringify(o.clPorEtapa[novaEtapa]));
@@ -1418,7 +1359,7 @@ function moverEtapa(id,novaEtapa){
     var pendentesExtras = [];
     Object.keys(o.clPorEtapa).forEach(function(etapa){
       if(etapa === novaEtapa) return;
-      // só trazer pendentes de etapas ANTERIORES à etapa atual
+      // so trazer pendentes de etapas ANTERIORES a etapa atual
       var idxEtapa = STAGES.indexOf(etapa);
       if(idxEtapa >= idxAtual) return;
       (o.clPorEtapa[etapa]||[]).forEach(function(ci){
@@ -1428,13 +1369,13 @@ function moverEtapa(id,novaEtapa){
         }
       });
     });
-    // Adicionar pendentes que não estão no snapshot restaurado
+    // Adicionar pendentes que nao estao no snapshot restaurado
     pendentesExtras.forEach(function(ci){
       var jaExiste = o.cl.some(function(f){ return f.name === ci.name; });
       if(!jaExiste) o.cl = [ci].concat(o.cl);
     });
   } else {
-    // Nova etapa — gerar do zero com pendentes acumulados
+    // Nova etapa  gerar do zero com pendentes acumulados
     o.cl = gerarCL(novaEtapa, o.equips, o.cl, o.clPorEtapa);
   }
 
@@ -1444,9 +1385,7 @@ function moverEtapa(id,novaEtapa){
   salvarHist({msg:'"'+o.name+'" movida para '+novaEtapa,dt:agora(),user:USER_LOGADO||'Você',ts:Date.now()});
 }
 
-/* ═══════════════════════════════════════════════════════════
-   EXCLUIR OBRA
-═══════════════════════════════════════════════════════════ */
+/* EXCLUIR OBRA */
 var pendDel=null;
 function pedirSenha(id){
   var o=obras.find(function(x){return x.id===id;}); if(!o) return;
@@ -1470,11 +1409,8 @@ function confirmDel(){
   closePin(); closeModal();
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SAC
-═══════════════════════════════════════════════════════════ */
+/* SAC */
 var sacFiltro='todos';
-
 function renderSAC(){
   var abertos=chamados.filter(function(c){return c.status!=='resolvido';}).length;
   var resolvidos=chamados.filter(function(c){return c.status==='resolvido';}).length;
@@ -1482,7 +1418,6 @@ function renderSAC(){
   var filtros=['todos','aberto','andamento','resolvido'];
   var filtroLabels={todos:'Todos',aberto:'Abertos',andamento:'Em andamento',resolvido:'Resolvidos'};
   var filtroColors={todos:'',aberto:'color:var(--red);border-color:var(--red);background:var(--rbg)',andamento:'color:var(--amber);border-color:var(--amber);background:var(--wbg)',resolvido:'color:var(--green);border-color:var(--green);background:var(--gbg)'};
-
   var html=
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'+
       '<div><div style="font-size:15px;font-weight:600;margin-bottom:4px">Central de SAC</div>'+
@@ -1496,7 +1431,6 @@ function renderSAC(){
         return '<button class="btn btn-sm" style="'+style+'" onclick="sacFiltro=\''+f+'\';renderSAC()">'+filtroLabels[f]+'</button>';
       }).join('')+
     '</div>';
-
   if(!lista.length){
     html+='<div class="empty-cl">Nenhum chamado encontrado.</div>';
   } else {
@@ -1634,9 +1568,7 @@ function sacPublicar(cId,idx){
   if(ciEl){var badge=ciEl.querySelector('.ci-badge');if(st!=='pend'){var lbl=st==='ok'?'Concluído':'Parcial',cls=' '+st;if(badge){badge.className='ci-badge'+cls;badge.textContent=lbl;}else{var b=document.createElement('span');b.className='ci-badge'+cls;b.textContent=lbl;ciEl.querySelector('.ci-top').appendChild(b);}}else if(badge){badge.remove();}}
 }
 
-/* ═══════════════════════════════════════════════════════════
-   IA
-═══════════════════════════════════════════════════════════ */
+/* IA */
 async function analisar(id){
   var o=obras.find(function(x){return x.id===id;}), el=document.getElementById('ai-'+id);
   if(!o||!el) return;
@@ -1651,9 +1583,7 @@ async function analisar(id){
   }catch(e){el.innerHTML='<span style="color:var(--text2)">IA indisponível.</span>';}
 }
 
-/* ═══════════════════════════════════════════════════════════
-   PRAZOS / HISTÓRICO
-═══════════════════════════════════════════════════════════ */
+/* PRAZOS */
 function renderPrazos(){
   var agendaHTML = renderAgendaContatos();
   document.getElementById('prazos-list').innerHTML=agendaHTML||'<div class="empty-cl">Nenhum contato agendado.</div>';
@@ -1665,11 +1595,8 @@ function renderHistGlobal(){
   }).join('') || '<div class="empty-cl">Nenhum histórico ainda.</div>';
 }
 
-/* ═══════════════════════════════════════════════════════════
-   NAVEGAÇÃO
-═══════════════════════════════════════════════════════════ */
+/* NAVEGAC */
 var VTITLES={dashboard:'Dashboard',kanban:'Kanban de obras',prazos:'Agenda de contatos',historico:'Histórico de alterações',sac:'Central de SAC'};
-
 function showView(id, el){
   ['dashboard','kanban','prazos','historico','sac'].forEach(function(v){
     document.getElementById('view-'+v).style.display=v===id?'':'none';
@@ -1685,9 +1612,7 @@ function showView(id, el){
   if(id==='sac') renderSAC();
 }
 
-/* ═══════════════════════════════════════════════════════════
-   MODAL HELPERS
-═══════════════════════════════════════════════════════════ */
+/* MODAL HELPERS */
 function mHead(title,sub,actions){
   document.getElementById('mtitle').textContent=title;
   document.getElementById('msub').textContent=sub;
@@ -1696,18 +1621,13 @@ function mHead(title,sub,actions){
 function showModal(){document.getElementById('overlay').classList.add('open');}
 function closeModal(){document.getElementById('overlay').classList.remove('open');}
 function overlayBg(e){if(e.target===document.getElementById('overlay'))closeModal();}
-
-/* ═══════════════════════════════════════════════════════════
-   UTILS
-═══════════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════════
-   IMPORTAR PDF DA PROPOSTA
-═══════════════════════════════════════════════════════════ */
+/* UTILS */
+/* IMPORTAR PDF DA PROPOSTA */
 var _pdfFiles = [];
 var _pdfEquips = [];
 
 function abrirImportPDF() {
-  mHead('Importar proposta em PDF', 'A IA lê e categoriza automaticamente',
+  mHead('Importar proposta em PDF', 'A IA le e categoriza automaticamente',
     '<button class="btn btn-sm btn-ghost" onclick="fecharImportPDF()"><i class="ti ti-x"></i></button>'
   );
 
@@ -1715,23 +1635,20 @@ function abrirImportPDF() {
   html += '<div class="pdf-drop-area" id="pdf-drop" onclick="triggerPDFInput()">';
   html += '<div class="pdf-drop-icon"><i class="ti ti-file-type-pdf"></i></div>';
   html += '<div class="pdf-drop-text">Clique ou arraste os PDFs aqui</div>';
-  html += '<div class="pdf-drop-sub">Suporta múltiplos arquivos — a IA lê todos</div>';
+  html += '<div class="pdf-drop-sub">Suporta multiplos arquivos</div>';
   html += '</div>';
   html += '<input type="file" id="pdf-input" accept=".pdf" multiple style="display:none" onchange="handlePDFSelect(this.files)">';
   html += '<div class="pdf-file-list" id="pdf-file-list"></div>';
   html += '<button class="btn btn-primary" id="btn-analisar-pdf" style="width:100%;justify-content:center;display:none" onclick="analisarPDFs()">';
-  html += '<i class="ti ti-wand"></i> Analisar com IA</button>';
+  html += '<i class="ti ti-wand"></i> Analisar PDF</button>';
   html += '<div id="pdf-resultado"></div>';
-
   document.getElementById('mbody').innerHTML = html;
-
-  // Drag events no drop area
   setTimeout(function(){
     var drop = document.getElementById('pdf-drop');
     if(drop){
-      drop.addEventListener('dragover', function(e){ e.preventDefault(); drop.classList.add('drag-over'); });
+      drop.addEventListener('dragover', function(ev){ ev.preventDefault(); drop.classList.add('drag-over'); });
       drop.addEventListener('dragleave', function(){ drop.classList.remove('drag-over'); });
-      drop.addEventListener('drop', function(e){ e.preventDefault(); drop.classList.remove('drag-over'); handlePDFDrop(e); });
+      drop.addEventListener('drop', function(ev){ ev.preventDefault(); drop.classList.remove('drag-over'); handlePDFDrop(ev); });
     }
   }, 50);
 
@@ -1746,7 +1663,7 @@ function triggerPDFInput() {
 }
 function fecharImportPDF() {
   closeModal();
-  // Reabrir formulário de nova obra
+  // Reabrir formulario de nova obra
   openNova();
 }
 
@@ -1802,7 +1719,6 @@ async function analisarPDFs() {
   btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Lendo PDFs...';
   btn.disabled = true;
   resEl.innerHTML = '<div style="color:var(--text2);padding:12px;font-size:13px"><i class="ti ti-loader-2"></i> Processando...</div>';
-
   try {
     // Carregar PDF.js dinamicamente
     if(typeof pdfjsLib === 'undefined') {
@@ -1814,7 +1730,6 @@ async function analisarPDFs() {
       });
     }
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-
     var todosEquips = [];
 
     for(var f = 0; f < _pdfFiles.length; f++) {
@@ -1825,12 +1740,10 @@ async function analisarPDFs() {
       for(var p = 1; p <= pdf.numPages; p++) {
         var page = await pdf.getPage(p);
         var tc = await page.getTextContent();
-        textoCompleto += tc.items.map(function(it){ return it.str; }).join(' ') + '
-';
+        textoCompleto += tc.items.map(function(it){ return it.str; }).join(' ') + '\n';
       }
-      // Normalizar espaços múltiplos em quebra de linha
-      textoCompleto = textoCompleto.replace(/ {2,}/g, '
-');
+      // Normalizar espacos multiplos em quebra de linha
+      textoCompleto = textoCompleto.replace(/ {2,}/g, '\n');
       var equips = extrairEquipamentos(textoCompleto);
       equips.forEach(function(e) {
         var chave = e.nome.toUpperCase();
@@ -1857,7 +1770,7 @@ async function analisarPDFs() {
   btn.disabled = false;
 }
 
-/* Mapeamento de seções do PDF para categorias */
+/* Mapeamento de secoes do PDF para categorias */
 var PDF_SECOES = {
   'videomonitoramento':'seguranca','alarme':'seguranca','cftv':'seguranca',
   'controle de acesso':'seguranca','sistema nobreak':'seguranca',
@@ -1882,7 +1795,6 @@ var PDF_IGNORAR = ['SERVICO','SERVI','IMG ITEM','RESUMO','TOTAL R',
   'DESCONTO','FORMA DE PAG','BOLETO','PIX -','APRESENTADO',
   'PROPOSTA COMERCIAL','FORMAS DE PAGAMENTO','SEM NOME','VITORIA',
   'CLIENTE:','JEFFERSON','_____'];
-
 function pdfIgnorar(linha) {
   var l = linha.toUpperCase().trim();
   for(var k=0;k<PDF_IGNORAR.length;k++) if(l.indexOf(PDF_IGNORAR[k])>=0) return true;
@@ -1910,7 +1822,9 @@ function pdfCabo(nome) {
 }
 
 function pdfLimpar(nome) {
-  return nome.replace(/^\d+\s*-\s*/,'').replace(/\s*-?\s*METRO[S]?\s*$/i,'').trim();
+  nome = nome.replace(new RegExp('^\\d+\\s*-\\s*'), '').trim();
+  nome = nome.replace(new RegExp('\\s*-?\\s*METRO[S]?\\s*$', 'i'), '').trim();
+  return nome;
 }
 
 function pdfParseQtd(s) {
@@ -1919,8 +1833,7 @@ function pdfParseQtd(s) {
 
 function extrairEquipamentos(texto) {
   var equips = [];
-  var linhas = texto.split('
-');
+  var linhas = texto.split('\n');
   var catAtual = 'seguranca';
   // Regex: item com qtd na mesma linha (aceita 1.220,00 com milhar)
   var PAD = /^\d+\s*-\s*(.+?)\s+(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?:\s+R\$.*)?$/;
@@ -1933,7 +1846,7 @@ function extrairEquipamentos(texto) {
     if(!linha || linha.length < 3) continue;
     if(pdfIgnorar(linha)) continue;
 
-    // ITEM ANTES DE SEÇÃO — evita "HOME THEATER 7.1" ser interpretado como seção
+    // ITEM ANTES DE SECAO  evita "HOME THEATER 7.1" ser interpretado como secao
     var m = PAD.exec(linha);
     if(m) {
       var nome = pdfLimpar(m[1]);
@@ -1945,12 +1858,11 @@ function extrairEquipamentos(texto) {
       continue;
     }
 
-    // Detectar seção
+    // Detectar secao
     var sec = pdfSecao(linha);
     if(sec) { catAtual = sec; continue; }
 
-    // Nome multi-linha (ex: "27 - RACK DE PISO...
-1,00 R$...")
+    // Nome multi-linha (ex: 27 - RACK DE PISO com QTD na proxima linha)
     var m2 = PAD_NOME.exec(linha);
     if(m2 && i < linhas.length) {
       var prox = linhas[i].trim();
@@ -1970,7 +1882,6 @@ function extrairEquipamentos(texto) {
   return equips;
 }
 
-iniciarApp();
-</script>
+iniciarApp();</script>
 </body>
 </html>
