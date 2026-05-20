@@ -264,7 +264,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     .search-item-type{font-size:10px;padding:2px 7px;border-radius:20px;flex-shrink:0}
 </style>
 <!-- PDF.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 <!-- html2pdf -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <!-- Firebase -->
@@ -1800,80 +1799,174 @@ async function analisarPDFs() {
   var resEl = document.getElementById('pdf-resultado');
   if(!_pdfFiles.length || !resEl) return;
 
-  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Analisando com IA...';
+  btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Lendo PDFs...';
   btn.disabled = true;
-  resEl.innerHTML = '<div style="color:var(--text2);padding:12px;font-size:13px">Lendo e analisando os PDFs...</div>';
+  resEl.innerHTML = '<div style="color:var(--text2);padding:12px;font-size:13px"><i class="ti ti-loader-2"></i> Processando...</div>';
 
   try {
-    // Converter cada PDF para base64
-    var pdfDocs = [];
+    // Carregar PDF.js dinamicamente
+    if(typeof pdfjsLib === 'undefined') {
+      await new Promise(function(resolve, reject) {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+    var todosEquips = [];
+
     for(var f = 0; f < _pdfFiles.length; f++) {
-      resEl.innerHTML = '<div style="color:var(--text2);padding:12px;font-size:13px">Preparando arquivo ' + (f+1) + ' de ' + _pdfFiles.length + '...</div>';
-      var b64 = await fileToBase64(_pdfFiles[f]);
-      pdfDocs.push({
-        type: 'document',
-        source: { type: 'base64', media_type: 'application/pdf', data: b64 },
-        title: _pdfFiles[f].name
+      resEl.innerHTML = '<div style="color:var(--text2);padding:12px;font-size:13px">Lendo arquivo ' + (f+1) + ' de ' + _pdfFiles.length + '...</div>';
+      var arrayBuffer = await _pdfFiles[f].arrayBuffer();
+      var pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+      var textoCompleto = '';
+      for(var p = 1; p <= pdf.numPages; p++) {
+        var page = await pdf.getPage(p);
+        var tc = await page.getTextContent();
+        textoCompleto += tc.items.map(function(it){ return it.str; }).join(' ') + '
+';
+      }
+      // Normalizar espaços múltiplos em quebra de linha
+      textoCompleto = textoCompleto.replace(/ {2,}/g, '
+');
+      var equips = extrairEquipamentos(textoCompleto);
+      equips.forEach(function(e) {
+        var chave = e.nome.toUpperCase();
+        var ex = todosEquips.find(function(x){ return x.nome.toUpperCase() === chave; });
+        if(ex) ex.qtd += e.qtd;
+        else todosEquips.push(e);
       });
     }
 
-    resEl.innerHTML = '<div style="color:var(--text2);padding:12px;font-size:13px">Enviando para análise...</div>';
+    _pdfEquips = todosEquips;
 
-    var prompt = [
-      "Analise esta proposta comercial da SLight e extraia TODOS os equipamentos e materiais.",
-      "Ignore itens chamados SERVICO ou SERVICOS.",
-      "Para cada item defina a categoria:",
-      "automacao: centrais de automacao, controladores, modulos zigbee, keypads, dimmers, reles, HUB",
-      "audiovisual: amplificadores, caixas acusticas, receivers, subwoofers, projetores, cabos de audio e video",
-      "seguranca: cameras, NVR, DVR, alarmes, sensores, sirenes, baterias, nobreak, HD, controle de acesso, fechadura, botoeira",
-      "rede: switches, access points, cloud gateway, roteadores, cabo UTP, cabo CAT",
-      "Marque ehCabo como true apenas para cabos e fios.",
-      "Para cabos com METRO no nome use unidade m, senao use un.",
-      "Responda APENAS com JSON sem texto antes ou depois:",
-      '{"equipamentos":[{"nome":"NOME","qtd":1,"unidade":"un","cat":"seguranca","ehCabo":false}]}'
-    ].join(' ');
-
-    var messages = [{ role: 'user', content: pdfDocs.concat([{type:'text', text: prompt}]) }];
-
-    var resp = await fetch('/api/claude', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages: messages })
-    });
-
-    var data = await resp.json();
-    if(data.error) throw new Error(JSON.stringify(data.error));
-
-    var text = data.content ? data.content.map(function(b){ return b.text||''; }).join('') : '';
-    var clean = text.replace(/```json|```/g,'').trim();
-    var parsed = JSON.parse(clean);
-    _pdfEquips = parsed.equipamentos || [];
-
-    if(_pdfEquips.length === 0) {
-      resEl.innerHTML = '<div style="color:var(--amber);padding:12px;font-size:13px"><i class="ti ti-alert-triangle" style="margin-right:6px"></i>Nenhum equipamento identificado no PDF.</div>';
+    if(!_pdfEquips.length) {
+      resEl.innerHTML = '<div style="color:var(--amber);padding:12px;font-size:13px"><i class="ti ti-alert-triangle" style="margin-right:6px"></i>Nenhum equipamento identificado. Verifique se o PDF é da SLight.</div>';
     } else {
       renderPDFResultado();
     }
 
   } catch(e) {
-    console.error('[PDF] ERRO:', e);
-    resEl.innerHTML = '<div style="color:var(--red);padding:12px;font-size:13px"><i class="ti ti-alert-circle" style="margin-right:6px"></i>Erro: ' + e.message + '</div>';
+    console.error('[PDF]', e);
+    resEl.innerHTML = '<div style="color:var(--red);padding:12px;font-size:13px"><i class="ti ti-alert-circle" style="margin-right:6px"></i>Erro ao ler: ' + e.message + '</div>';
   }
 
   btn.innerHTML = '<i class="ti ti-wand"></i> Analisar PDF';
   btn.disabled = false;
 }
 
-function fileToBase64(file) {
-  return new Promise(function(resolve, reject){
-    var reader = new FileReader();
-    reader.onload = function(){ resolve(reader.result.split(',')[1]); };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+/* Mapeamento de seções do PDF para categorias */
+var PDF_SECOES = {
+  'videomonitoramento':'seguranca','alarme':'seguranca','cftv':'seguranca',
+  'controle de acesso':'seguranca','sistema nobreak':'seguranca',
+  'cortina':'automacao','automacao':'automacao','automação':'automacao',
+  'automaçao':'automacao','home theater':'audiovisual','som ambiente':'audiovisual',
+  'audiovisual':'audiovisual','distribuicao de rede':'rede',
+  'distribuição de rede':'rede','rede wifi':'rede'
+};
+var PDF_KW = {
+  seguranca:['NVR','DVR','CAMERA','HD WD','HD PURPLE','NOBREAK','ALARME',
+    'CENTRAL DE ALARME','SENSOR','SIRENE','BATERIA','CONTROLE DE ACESSO',
+    'FECHADURA','BOTOEIRA','FONTE DE ALIMENTAC','MONITOR INTERNO','RACK DE PISO','CFTV'],
+  audiovisual:['AMPLIFICADOR','CAIXA ACUSTICA','CAIXA ACUSTICA','RECEIVER',
+    'SUBWOOFER','EXTRATOR DE AUDIO','CONDICIONADOR DE ENERGIA','HOME THEATER'],
+  automacao:['MODULO ZIGBEE','CENTRAL INTEGRADORA','CENTRAL DE AUTOMACAO',
+    'HUB.','KEYPAD','CONTROLE DE CLIMATIZAC','CONTROLE DE ILUMINAC',
+    'CONTROLE ILUMINAC','EXTENSOR INFRA','DIMMER'],
+  rede:['SWITCH','ACCESS POINT','ACESS POINT','CLOUD GATEWAY',
+    'ROTEADOR','PATCH PANEL','UNIFI','UBIQUITI','U6+','REDE UNIFI']
+};
+var PDF_IGNORAR = ['SERVICO','SERVI','IMG ITEM','RESUMO','TOTAL R',
+  'DESCONTO','FORMA DE PAG','BOLETO','PIX -','APRESENTADO',
+  'PROPOSTA COMERCIAL','FORMAS DE PAGAMENTO','SEM NOME','VITORIA',
+  'CLIENTE:','JEFFERSON','_____'];
+
+function pdfIgnorar(linha) {
+  var l = linha.toUpperCase().trim();
+  for(var k=0;k<PDF_IGNORAR.length;k++) if(l.indexOf(PDF_IGNORAR[k])>=0) return true;
+  if(/^R\$/.test(l)) return true;
+  if(/^\d+\/\d+$/.test(l)) return true;
+  if(l === 'N' || l === 'N ') return true;
+  return false;
 }
 
-iniciarApp();
-</script>
-</body>
-</html>
+function pdfSecao(linha) {
+  var l = linha.toLowerCase();
+  for(var sec in PDF_SECOES) if(l.indexOf(sec)>=0) return PDF_SECOES[sec];
+  return null;
+}
+
+function pdfCat(nome) {
+  var n = nome.toUpperCase();
+  for(var cat in PDF_KW) for(var j=0;j<PDF_KW[cat].length;j++) if(n.indexOf(PDF_KW[cat][j])>=0) return cat;
+  return null;
+}
+
+function pdfCabo(nome) {
+  var n = nome.toUpperCase();
+  return n.indexOf('CABO ')>=0 || n.indexOf('METRO')>=0;
+}
+
+function pdfLimpar(nome) {
+  return nome.replace(/^\d+\s*-\s*/,'').replace(/\s*-?\s*METRO[S]?\s*$/i,'').trim();
+}
+
+function pdfParseQtd(s) {
+  return parseFloat(s.replace(/\./g,'').replace(',','.'));
+}
+
+function extrairEquipamentos(texto) {
+  var equips = [];
+  var linhas = texto.split('
+');
+  var catAtual = 'seguranca';
+  // Regex: item com qtd na mesma linha (aceita 1.220,00 com milhar)
+  var PAD = /^\d+\s*-\s*(.+?)\s+(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?:\s+R\$.*)?$/;
+  var PAD_QTD = /^(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?:\s+R\$.*)?$/;
+  var PAD_NOME = /^\d+\s*-\s*(.+)$/;
+
+  var i = 0;
+  while(i < linhas.length) {
+    var linha = linhas[i].trim(); i++;
+    if(!linha || linha.length < 3) continue;
+    if(pdfIgnorar(linha)) continue;
+
+    // ITEM ANTES DE SEÇÃO — evita "HOME THEATER 7.1" ser interpretado como seção
+    var m = PAD.exec(linha);
+    if(m) {
+      var nome = pdfLimpar(m[1]);
+      if(!nome || nome.length < 3 || pdfIgnorar(nome)) continue;
+      var qtd = pdfParseQtd(m[2]);
+      var cabo = pdfCabo(nome);
+      var cat = pdfCat(nome) || catAtual;
+      equips.push({nome:nome, qtd:qtd, unidade:cabo?'m':'un', cat:cat, ehCabo:cabo});
+      continue;
+    }
+
+    // Detectar seção
+    var sec = pdfSecao(linha);
+    if(sec) { catAtual = sec; continue; }
+
+    // Nome multi-linha (ex: "27 - RACK DE PISO...
+1,00 R$...")
+    var m2 = PAD_NOME.exec(linha);
+    if(m2 && i < linhas.length) {
+      var prox = linhas[i].trim();
+      var mq = PAD_QTD.exec(prox);
+      if(mq) {
+        var nome2 = pdfLimpar(m2[1]);
+        if(nome2 && nome2.length >= 3 && !pdfIgnorar(nome2)) {
+          var qtd2 = pdfParseQtd(mq[1]);
+          var cabo2 = pdfCabo(nome2);
+          var cat2 = pdfCat(nome2) || catAtual;
+          equips.push({nome:nome2, qtd:qtd2, unidade:cabo2?'m':'un', cat:cat2, ehCabo:cabo2});
+          i++;
+        }
+      }
+    }
+  }
+  return equips;
+}
+
