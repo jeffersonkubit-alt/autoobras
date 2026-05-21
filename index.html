@@ -773,6 +773,18 @@ let pendingEquipsNovaObra = [];
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 
+// Data/hora local para inputs (sem UTC offset)
+const localDateTimeStr = () => {
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const localDateStr = (offsetDays = 0) => {
+  const d = new Date(Date.now() + offsetDays * 864e5);
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+};
+
 const fmtDt = (d) => {
   if (!d) return '';
   const dt = d instanceof Date ? d : (d.toDate ? d.toDate() : new Date(d));
@@ -1576,7 +1588,7 @@ const renderTabContatos = (obra, container) => {
       </div>
       <div class="form-field">
         <label>Data/Hora</label>
-        <input type="datetime-local" id="ct-dt" value="${new Date().toISOString().slice(0,16)}">
+        <input type="datetime-local" id="ct-dt" value="${localDateTimeStr()}">
       </div>
     </div>
     <div class="form-field">
@@ -1585,7 +1597,7 @@ const renderTabContatos = (obra, container) => {
     </div>
     <div class="form-field">
       <label>Próximo contato</label>
-      <input type="date" id="ct-prox" value="${new Date(Date.now() + 14*24*60*60*1000).toISOString().slice(0,10)}">
+      <input type="date" id="ct-prox" value="${localDateStr(14)}">
     </div>
     <div style="display:flex;justify-content:flex-end">
       <button class="btn-sm btn-accent" id="btn-add-contato"><i class="ti ti-plus"></i> Registrar</button>
