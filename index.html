@@ -206,7 +206,9 @@
     display:flex; align-items:center;
   }
   .card-grip:active { cursor:grabbing; }
-  .card-name { font-size:13px; font-weight:600; color:var(--text); margin-right:20px; }
+  .card-name { font-size:13px; font-weight:600; color:var(--text); margin-right:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .card-dates { margin-top:5px; display:flex; flex-direction:column; gap:2px; }
+  .card-date { font-size:10px; font-family:'DM Mono',monospace; }
   .card-prop { font-size:11px; color:var(--text3); font-family:'DM Mono',monospace; margin-top:2px; }
   .card-resp { font-size:11px; color:var(--text2); margin-top:4px; }
   .card-tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
@@ -1189,15 +1191,36 @@ const buildKanbanCard = (obra) => {
   const noContact = obra.stage !== 'Obra entregue' && lastContactDays(obra) >= 5;
 
   let tags = '';
-  if (noContact) tags += `<span class="card-tag tag-amber">${lastContactDays(obra)}d sem contato</span>`;
   if (hasParciais) tags += `<span class="card-tag tag-blue">parciais</span>`;
   if (hasPendAnt) tags += `<span class="card-tag tag-red">pendentes ant.</span>`;
 
+  // Último contato
+  let lastContactHtml = '';
+  if (obra.contatos && obra.contatos.length > 0) {
+    const last = obra.contatos[obra.contatos.length - 1];
+    const dias = lastContactDays(obra);
+    const cor = dias >= 5 ? 'var(--red)' : dias >= 3 ? 'var(--amber)' : 'var(--text3)';
+    const dtStr = last.dt ? new Date(last.dt).toLocaleDateString('pt-BR') : '';
+    lastContactHtml = `<div class="card-date" style="color:${cor}">↩ Último: ${dtStr}${dias >= 5 ? ' ('+dias+'d atrás)' : ''}</div>`;
+  }
+
+  // Próximo contato
+  let proxContactHtml = '';
+  if (obra.proximoContato && obra.stage !== 'Obra entregue') {
+    const prox = new Date(obra.proximoContato);
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const diffDias = Math.ceil((prox - hoje) / 864e5);
+    const cor = diffDias < 0 ? 'var(--red)' : diffDias <= 3 ? 'var(--amber)' : 'var(--green)';
+    const label = diffDias < 0 ? `atrasado ${Math.abs(diffDias)}d` : diffDias === 0 ? 'hoje' : `em ${diffDias}d`;
+    proxContactHtml = `<div class="card-date" style="color:${cor}">→ Próximo: ${prox.toLocaleDateString('pt-BR')} (${label})</div>`;
+  }
+
   card.innerHTML = `
-    <div class="card-name">${obra.name}</div>
+    <div class="card-name" title="${obra.name}">${obra.name}</div>
     <div class="card-prop">${obra.prop || ''}</div>
     <div class="card-resp">${obra.resp || ''}</div>
     ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+    ${lastContactHtml || proxContactHtml ? `<div class="card-dates">${lastContactHtml}${proxContactHtml}</div>` : ''}
     <div class="progress-bar-wrap">
       <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
       <div class="progress-label">${done}/${total} itens concluídos</div>
