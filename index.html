@@ -180,7 +180,7 @@
   .kanban-wrap::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
   .kanban-wrap::-webkit-scrollbar-thumb:hover { background:var(--accent); }
   .kanban-board {
-    display:flex; gap:8px; padding-bottom:8px; align-items:flex-start;
+    display:flex; gap:8px; padding-bottom:8px; align-items:flex-start; height:100%;
   }
   .kanban-col {
     min-width:190px; width:190px; background:var(--bg2); border:1px solid var(--border);
@@ -314,8 +314,9 @@
   }
   .equip-item .ei-name { flex:1; font-size:13px; color:var(--text); }
   .equip-item .ei-qtd { font-size:12px; color:var(--text3); font-family:'DM Mono',monospace; min-width:60px; text-align:right; }
-  .equip-item .ei-del { background:none; border:none; color:var(--text3); font-size:16px; padding:2px; border-radius:4px; transition:color 0.15s; }
+  .equip-item .ei-del, .equip-item .ei-edit { background:none; border:none; color:var(--text3); font-size:16px; padding:2px; border-radius:4px; transition:color 0.15s; }
   .equip-item .ei-del:hover { color:var(--red); }
+  .equip-item .ei-edit:hover { color:var(--accent); }
   .add-equip-form {
     background:var(--bg3); border:1px solid var(--border); border-radius:var(--r);
     padding:14px; margin-top:12px; display:flex; flex-direction:column; gap:10px;
@@ -612,6 +613,21 @@
       <h3>Nova Obra</h3>
       <button class="modal-close" id="add-obra-close"><i class="ti ti-x"></i></button>
     </div>
+    <div style="padding:14px 20px 0">
+      <div style="background:var(--bg3);border:1px dashed var(--border2);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px">
+        <i class="ti ti-file-type-pdf" style="font-size:26px;color:var(--red);flex-shrink:0"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">Preencher via proposta PDF</div>
+          <div id="add-obra-pdf-status" style="font-size:11px;color:var(--text3);margin-top:2px">Extrai cliente, nº proposta e equipamentos automaticamente</div>
+        </div>
+        <button class="btn-sm" id="add-obra-from-pdf"><i class="ti ti-upload"></i> Selecionar PDF</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin:12px 0 2px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;color:var(--text3)">ou preencher manualmente</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+    </div>
     <div class="sm-body">
       <div class="form-field">
         <label>Nome da Obra / Cliente</label>
@@ -619,7 +635,7 @@
       </div>
       <div class="form-field">
         <label>Nº Proposta</label>
-        <input type="text" id="no-prop" placeholder="Ex: 2024-001">
+        <input type="text" id="no-prop" placeholder="Ex: 342">
       </div>
       <div class="form-field">
         <label>Responsável</label>
@@ -744,6 +760,7 @@ let sacFilter = 'todos';
 let unsubs = [];
 let dragSrcStage = null;
 let dragSrcId = null;
+let pendingEquipsNovaObra = [];
 
 // ===================== HELPERS =====================
 const $ = (s) => document.querySelector(s);
@@ -1312,17 +1329,69 @@ const renderTabEquipamentos = (obra, container) => {
       grouped[cat].forEach(eq => {
         const item = document.createElement('div');
         item.className = 'equip-item';
+        item.style.flexDirection = 'column';
+        item.style.alignItems = 'stretch';
         const unit = eq.unidade === 'm' ? 'm' : 'un';
-        item.innerHTML = `
-          <div class="ei-name">${eq.nome} ${eq.ehCabo ? '<span style="font-size:10px;color:var(--text3)">(cabo)</span>' : ''}</div>
+
+        // View row
+        const viewRow = document.createElement('div');
+        viewRow.style.cssText = 'display:flex;align-items:center;gap:8px;width:100%';
+        viewRow.innerHTML = `
+          <div class="ei-name" style="flex:1">${eq.nome} ${eq.ehCabo ? '<span style="font-size:10px;color:var(--text3)">(cabo)</span>' : ''}</div>
           <div class="ei-qtd">${eq.qtd} ${unit}</div>
-          <button class="ei-del" data-idx="${eq.origIdx}"><i class="ti ti-trash"></i></button>
+          <button class="ei-edit" title="Editar"><i class="ti ti-pencil"></i></button>
+          <button class="ei-del" title="Excluir"><i class="ti ti-trash"></i></button>
         `;
-        item.querySelector('.ei-del').addEventListener('click', async () => {
+
+        // Edit row
+        const editRow = document.createElement('div');
+        editRow.style.cssText = 'display:none;align-items:center;gap:6px;width:100%';
+        editRow.innerHTML = `
+          <div style="flex:1;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${eq.nome}</div>
+          <input type="number" class="ei-edit-qtd" value="${eq.qtd}" min="0.01" step="0.01" style="width:72px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 8px;font-size:13px;font-family:inherit;outline:none">
+          <select class="ei-edit-unit" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 6px;font-size:13px;font-family:inherit;outline:none">
+            <option value="un" ${unit === 'un' ? 'selected' : ''}>un</option>
+            <option value="m" ${unit === 'm' ? 'selected' : ''}>m</option>
+          </select>
+          <button class="ei-save" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:14px;cursor:pointer" title="Salvar"><i class="ti ti-check"></i></button>
+          <button class="ei-cancel-edit" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:14px;color:var(--text3);cursor:pointer" title="Cancelar"><i class="ti ti-x"></i></button>
+        `;
+
+        item.appendChild(viewRow);
+        item.appendChild(editRow);
+
+        viewRow.querySelector('.ei-edit').addEventListener('click', () => {
+          viewRow.style.display = 'none';
+          editRow.style.display = 'flex';
+          editRow.querySelector('.ei-edit-qtd').focus();
+          editRow.querySelector('.ei-edit-qtd').select();
+        });
+
+        editRow.querySelector('.ei-cancel-edit').addEventListener('click', () => {
+          editRow.style.display = 'none';
+          viewRow.style.display = 'flex';
+        });
+
+        const saveEdit = async () => {
+          const newQtd = parseFloat(editRow.querySelector('.ei-edit-qtd').value) || 1;
+          const newUnit = editRow.querySelector('.ei-edit-unit').value;
+          obra.equips[eq.origIdx].qtd = newQtd;
+          obra.equips[eq.origIdx].unidade = newUnit;
+          obra.equips[eq.origIdx].ehCabo = newUnit === 'm';
+          await saveObra(obra);
+          renderTabEquipamentos(obra, container);
+        };
+
+        editRow.querySelector('.ei-save').addEventListener('click', saveEdit);
+        editRow.querySelector('.ei-edit-qtd').addEventListener('keydown', e => { if (e.key === 'Enter') saveEdit(); });
+
+        viewRow.querySelector('.ei-del').addEventListener('click', async () => {
+          if (!confirm(`Excluir "${eq.nome}"?`)) return;
           obra.equips.splice(eq.origIdx, 1);
           await saveObra(obra);
           renderTabEquipamentos(obra, container);
         });
+
         grp.appendChild(item);
       });
 
@@ -1620,7 +1689,91 @@ const buildExportHTML = (obra) => {
   `;
 };
 
-// ===================== IMPORT PDF =====================
+// ===================== PDF PARSER (shared) =====================
+const loadPDFJS = async () => {
+  if (window.pdfjsLib) return;
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+  document.head.appendChild(script);
+  await new Promise(res => { script.onload = res; });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+};
+
+const parseSLightPDF = async (file) => {
+  await loadPDFJS();
+  const arrBuf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument(arrBuf).promise;
+
+  const CAT_PATTERNS = [
+    { cat: 'seguranca', pat: new RegExp('Videomonitoramento|Alarme|CFTV|Controle de Acesso', 'i') },
+    { cat: 'audiovisual', pat: new RegExp('Home Theater|Som Ambiente', 'i') },
+    { cat: 'automacao', pat: new RegExp('Automa[çc]', 'i') },
+    { cat: 'rede', pat: new RegExp('Distribui[çc][aã]o de Rede', 'i') }
+  ];
+  const IGNORE_PAT = new RegExp('SERVI[CÇ]O|SERVICO|Img Item|Resumo|Formas de Pagamento', 'i');
+  const ITEM_PAT = new RegExp('^\\d+\\s*-\\s*(.+?)\\s+(\\d[\\d.]*(?:,\\d+)?)(?:\\s+R\\$[\\s\\d.,]+)?$');
+
+  let proposta = '';
+  let cliente = '';
+  const allLines = [];
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const yGroups = {};
+    tc.items.forEach(item => {
+      if (!item.str.trim()) return;
+      const yKey = Math.round(item.transform[5] / 5) * 5;
+      if (!yGroups[yKey]) yGroups[yKey] = [];
+      yGroups[yKey].push({ str: item.str, x: item.transform[4] });
+    });
+    Object.keys(yGroups).sort((a, b) => b - a).forEach(yKey => {
+      const text = yGroups[yKey].sort((a, b) => a.x - b.x).map(i => i.str).join(' ').trim();
+      if (text) allLines.push({ text, pageNum: p });
+    });
+  }
+
+  allLines.forEach(({ text }) => {
+    const pm = text.match(new RegExp('PROPOSTA[:\\s]+(\\d+)', 'i'));
+    if (pm) proposta = pm[1];
+    const cm = text.match(new RegExp('Cliente:\\s*(.+)', 'i'));
+    if (cm) cliente = cm[1].trim();
+  });
+
+  const markers = [];
+  allLines.forEach(({ text }, idx) => {
+    for (const { cat, pat } of CAT_PATTERNS) {
+      if (pat.test(text) && !ITEM_PAT.test(text)) { markers.push({ idx, cat }); break; }
+    }
+  });
+
+  const itemsMap = {};
+  allLines.forEach(({ text }, idx) => {
+    if (IGNORE_PAT.test(text) || text.length < 3) return;
+    const stripped = text.replace(new RegExp('\\s+R\\$[\\s\\d.,]+$'), '');
+    const m = ITEM_PAT.exec(stripped);
+    if (!m) return;
+    const nome = m[1].trim().toUpperCase();
+    if (!nome || nome.length < 2) return;
+    let isSection = false;
+    for (const { pat } of CAT_PATTERNS) { if (pat.test(nome)) { isSection = true; break; } }
+    if (isSection) return;
+    const rawQtd = m[2].replace(/\./g, '').replace(',', '.');
+    const qtd = parseFloat(rawQtd) || 1;
+    const ehCabo = nome.includes('CABO ') || new RegExp('\\bMETRO\\b').test(nome);
+    let cat = 'automacao';
+    for (let i = markers.length - 1; i >= 0; i--) {
+      if (markers[i].idx <= idx) { cat = markers[i].cat; break; }
+    }
+    const key = nome + '|' + cat;
+    if (itemsMap[key]) { itemsMap[key].qtd += qtd; }
+    else { itemsMap[key] = { nome, qtd, cat, ehCabo, unidade: ehCabo ? 'm' : 'un' }; }
+  });
+
+  return { proposta, cliente, equips: Object.values(itemsMap) };
+};
+
+// ===================== IMPORT PDF (dentro da obra) =====================
 const importPDF = (obra, container) => {
   const input = document.createElement('input');
   input.type = 'file';
@@ -1628,139 +1781,29 @@ const importPDF = (obra, container) => {
   input.onchange = async () => {
     const file = input.files[0];
     if (!file) return;
-
-    if (!window.pdfjsLib) {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
-      document.head.appendChild(script);
-      await new Promise(res => { script.onload = res; });
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-    }
-
-    const arrBuf = await file.arrayBuffer();
-    const pdf = await window.pdfjsLib.getDocument(arrBuf).promise;
-
-    // Category section header patterns
-    const CAT_PATTERNS = [
-      { cat: 'seguranca', pat: new RegExp('Videomonitoramento|Alarme|CFTV|Controle de Acesso', 'i') },
-      { cat: 'audiovisual', pat: new RegExp('Home Theater|Som Ambiente', 'i') },
-      { cat: 'automacao', pat: new RegExp('Automa[çc]', 'i') },
-      { cat: 'rede', pat: new RegExp('Distribui[çc][aã]o de Rede', 'i') }
-    ];
-    const IGNORE_PAT = new RegExp('SERVI[CÇ]O|SERVICO|Img Item|Resumo|Formas de Pagamento', 'i');
-    // Item: starts with number-dash, ends with Brazilian quantity (1.220,00 or 1220 or 1,00)
-    const ITEM_PAT = new RegExp('^\\d+\\s*-\\s*(.+?)\\s+(\\d[\\d.]*(?:,\\d+)?)(?:\\s+R\\$[\\s\\d.,]+)?$');
-
-    let proposta = '';
-    let cliente = '';
-    const allLines = [];
-
-    for (let p = 1; p <= pdf.numPages; p++) {
-      const page = await pdf.getPage(p);
-      const tc = await page.getTextContent();
-
-      // Group text items by Y coordinate (5pt bucket = same line)
-      const yGroups = {};
-      tc.items.forEach(item => {
-        if (!item.str.trim()) return;
-        const yRaw = item.transform[5];
-        const yKey = Math.round(yRaw / 5) * 5;
-        if (!yGroups[yKey]) yGroups[yKey] = [];
-        yGroups[yKey].push({ str: item.str, x: item.transform[4] });
+    try {
+      const result = await parseSLightPDF(file);
+      const newEquips = result.equips;
+      if (newEquips.length === 0) return alert('Nenhum equipamento encontrado no PDF.\n\nVerifique se o PDF é uma proposta SLight válida.');
+      if (!obra.equips) obra.equips = [];
+      newEquips.forEach(ne => {
+        const existing = obra.equips.find(e => e.nome === ne.nome && e.cat === ne.cat);
+        if (existing) { existing.qtd += ne.qtd; } else { obra.equips.push(ne); }
       });
-
-      // Sort Y buckets descending (top of page first in PDF coord system)
-      const sortedYs = Object.keys(yGroups).sort((a, b) => b - a);
-      sortedYs.forEach(yKey => {
-        const lineItems = yGroups[yKey].sort((a, b) => a.x - b.x);
-        const text = lineItems.map(i => i.str).join(' ').trim();
-        if (text) allLines.push({ text, pageNum: p });
-      });
+      let changed = false;
+      if (result.proposta && !obra.prop) { obra.prop = result.proposta; changed = true; }
+      if (result.cliente && !obra.name) { obra.name = result.cliente; changed = true; }
+      await saveObra(obra);
+      await upsertEquipHistorico(newEquips);
+      let msg = `${newEquips.length} equipamento(s) importados com sucesso!`;
+      if (result.proposta) msg += `\nProposta: #${result.proposta}`;
+      if (result.cliente) msg += `\nCliente: ${result.cliente}`;
+      alert(msg);
+      if (changed) renderModalObra(obra);
+      else renderTabEquipamentos(obra, container);
+    } catch(e) {
+      alert('Erro ao ler PDF: ' + e.message);
     }
-
-    // Extract proposta number and cliente name from all lines
-    allLines.forEach(({ text }) => {
-      const pm = text.match(new RegExp('PROPOSTA[:\\s]+(\\d+)', 'i'));
-      if (pm) proposta = pm[1];
-      const cm = text.match(new RegExp('Cliente:\\s*(.+)', 'i'));
-      if (cm) cliente = cm[1].trim();
-    });
-
-    // Pass 1: find section marker positions
-    const markers = [];
-    allLines.forEach(({ text }, idx) => {
-      for (const { cat, pat } of CAT_PATTERNS) {
-        // Only mark as section if it does NOT match an item pattern (avoids "HOME THEATER 7.1" false match)
-        if (pat.test(text) && !ITEM_PAT.test(text)) {
-          markers.push({ idx, cat });
-          break;
-        }
-      }
-    });
-
-    // Pass 2: parse items, assign category from last marker before each line
-    const itemsMap = {};
-    allLines.forEach(({ text }, idx) => {
-      if (IGNORE_PAT.test(text) || text.length < 3) return;
-
-      // Strip trailing R$ TOTAL value if present
-      const stripped = text.replace(new RegExp('\\s+R\\$[\\s\\d.,]+$'), '');
-
-      const m = ITEM_PAT.exec(stripped);
-      if (!m) return;
-
-      const nome = m[1].trim().toUpperCase();
-      if (!nome || nome.length < 2) return;
-
-      // Skip lines whose product name IS a section header (e.g. "HOME THEATER 7.1" with no number suffix)
-      let isSection = false;
-      for (const { pat } of CAT_PATTERNS) {
-        if (pat.test(nome)) { isSection = true; break; }
-      }
-      if (isSection) return;
-
-      let rawQtd = m[2].replace(/\./g, '').replace(',', '.');
-      const qtd = parseFloat(rawQtd) || 1;
-      const ehCabo = nome.includes('CABO ') || new RegExp('\\bMETRO\\b').test(nome);
-
-      // Find category: last marker at or before this line
-      let cat = 'automacao';
-      for (let i = markers.length - 1; i >= 0; i--) {
-        if (markers[i].idx <= idx) { cat = markers[i].cat; break; }
-      }
-
-      const key = nome + '|' + cat;
-      if (itemsMap[key]) {
-        itemsMap[key].qtd += qtd;
-      } else {
-        itemsMap[key] = { nome, qtd, cat, ehCabo, unidade: ehCabo ? 'm' : 'un' };
-      }
-    });
-
-    const newEquips = Object.values(itemsMap);
-    if (newEquips.length === 0) return alert('Nenhum equipamento encontrado no PDF.\n\nVerifique se o PDF é uma proposta SLight válida.');
-
-    if (!obra.equips) obra.equips = [];
-    newEquips.forEach(ne => {
-      const existing = obra.equips.find(e => e.nome === ne.nome && e.cat === ne.cat);
-      if (existing) { existing.qtd += ne.qtd; } else { obra.equips.push(ne); }
-    });
-
-    // Auto-fill proposta and nome do cliente se estiverem em branco
-    let changed = false;
-    if (proposta && !obra.prop) { obra.prop = proposta; changed = true; }
-    if (cliente && !obra.name) { obra.name = cliente; changed = true; }
-
-    await saveObra(obra);
-    await upsertEquipHistorico(newEquips);
-
-    let msg = `${newEquips.length} equipamento(s) importados com sucesso!`;
-    if (proposta) msg += `\nProposta: #${proposta}`;
-    if (cliente) msg += `\nCliente: ${cliente}`;
-    alert(msg);
-
-    if (changed) renderModalObra(obra);
-    else renderTabEquipamentos(obra, container);
   };
   input.click();
 };
@@ -1958,6 +2001,11 @@ const openChamado = (id) => {
 
 // ===================== ADD OBRA =====================
 const openAddObra = () => {
+  pendingEquipsNovaObra = [];
+  $('#no-name').value = '';
+  $('#no-prop').value = '';
+  const statusEl = $('#add-obra-pdf-status');
+  if (statusEl) { statusEl.textContent = 'Extrai cliente, nº proposta e equipamentos automaticamente'; statusEl.style.color = ''; }
   $('#modal-add-obra').classList.add('show');
 };
 
@@ -2072,18 +2120,49 @@ const bindEvents = () => {
   $('#add-obra-close').addEventListener('click', () => $('#modal-add-obra').classList.remove('show'));
   $('#add-obra-cancel').addEventListener('click', () => $('#modal-add-obra').classList.remove('show'));
   $('#modal-add-obra').addEventListener('click', (e) => { if (e.target === $('#modal-add-obra')) $('#modal-add-obra').classList.remove('show'); });
+
+  // PDF import inside nova obra modal
+  $('#add-obra-from-pdf').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const statusEl = $('#add-obra-pdf-status');
+      statusEl.textContent = 'Lendo PDF...';
+      statusEl.style.color = 'var(--amber)';
+      try {
+        const result = await parseSLightPDF(file);
+        if (result.proposta) $('#no-prop').value = result.proposta;
+        if (result.cliente) $('#no-name').value = result.cliente;
+        pendingEquipsNovaObra = result.equips;
+        let msg = '';
+        if (result.cliente) msg += `Cliente: ${result.cliente}`;
+        if (result.proposta) msg += (msg ? ' · ' : '') + `Proposta: #${result.proposta}`;
+        if (result.equips.length) msg += (msg ? ' · ' : '') + `${result.equips.length} equipamentos`;
+        statusEl.textContent = msg || 'PDF processado.';
+        statusEl.style.color = 'var(--green)';
+      } catch(e) {
+        statusEl.textContent = 'Erro: ' + e.message;
+        statusEl.style.color = 'var(--red)';
+      }
+    };
+    input.click();
+  });
+
   $('#add-obra-confirm').addEventListener('click', async () => {
     const name = $('#no-name').value.trim();
     const prop = $('#no-prop').value.trim();
     const resp = $('#no-resp').value;
     if (!name) return alert('Informe o nome da obra.');
     const id = genId();
-    const obra = { id, name, prop, stage: STAGES[0], resp, equips: [], cl: {}, clPorEtapa: {}, contatos: [], hist: [] };
-    await db.collection('obras').doc(id).set({ name, prop, stage: STAGES[0], resp, equips: [], cl: {}, clPorEtapa: {}, contatos: [], hist: [] });
+    const equips = pendingEquipsNovaObra.length ? [...pendingEquipsNovaObra] : [];
+    await db.collection('obras').doc(id).set({ name, prop, stage: STAGES[0], resp, equips, cl: {}, clPorEtapa: {}, contatos: [], hist: [] });
     await addLog(`Obra "${name}" criada por ${currentUser}`, id);
+    if (equips.length) await upsertEquipHistorico(equips);
+    pendingEquipsNovaObra = [];
     $('#modal-add-obra').classList.remove('show');
-    $('#no-name').value = '';
-    $('#no-prop').value = '';
     navigate('kanban');
   });
 
