@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AutoObras</title>
+<title>AutoObras — by SLight</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" rel="stylesheet">
 <style>
@@ -40,7 +40,7 @@
     padding:40px; width:360px; display:flex; flex-direction:column; gap:20px;
   }
   .login-logo { font-size:24px; font-weight:700; color:var(--accent); text-align:center; }
-  .login-logo span { color:var(--text2); font-weight:400; font-size:14px; display:block; margin-top:2px; }
+  .login-logo span { color:var(--text3); font-weight:400; font-size:12px; display:block; margin-top:4px; letter-spacing:0.05em; text-transform:uppercase; }
   .form-group { display:flex; flex-direction:column; gap:6px; }
   .form-group label { font-size:13px; color:var(--text2); font-weight:500; }
   .form-group select, .form-group input {
@@ -62,12 +62,13 @@
   }
   .sidebar-logo {
     padding:0 16px 16px; border-bottom:1px solid var(--border); margin-bottom:8px;
-    display:flex; align-items:center; gap:8px;
+    display:flex; flex-direction:column; gap:4px;
   }
-  .sidebar-logo-text { font-size:18px; font-weight:700; color:var(--accent); }
+  .sidebar-logo-top { display:flex; align-items:center; gap:8px; }
+  .sidebar-logo-text { font-size:17px; font-weight:700; color:var(--accent); }
   .sidebar-badge {
-    font-size:10px; background:var(--bg4); color:var(--text3); padding:2px 6px;
-    border-radius:4px; font-family:'DM Mono',monospace; border:1px solid var(--border);
+    font-size:10px; color:var(--text3); font-family:'DM Mono',monospace;
+    letter-spacing:0.04em; text-transform:uppercase; padding-left:1px;
   }
   .sidebar-user {
     padding:12px 16px; display:flex; align-items:center; gap:10px; margin-bottom:8px;
@@ -372,18 +373,19 @@
 
   .chamado-item {
     background:var(--bg2); border:1px solid var(--border); border-radius:var(--r);
-    padding:14px; margin-bottom:10px; cursor:pointer; transition:border-color 0.15s;
+    padding:12px; margin-bottom:8px; cursor:pointer; transition:border-color 0.15s;
   }
   .chamado-item:hover { border-color:var(--border2); }
+  .chamado-item.dragging { opacity:0.4; }
   .chamado-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-  .chamado-cliente { font-size:14px; font-weight:600; }
+  .chamado-cliente { font-size:13px; font-weight:600; }
   .chamado-status {
     font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px;
   }
   .status-aberto { background:rgba(245,101,101,0.15); color:var(--red); }
   .status-andamento { background:rgba(245,166,35,0.15); color:var(--amber); }
   .status-resolvido { background:rgba(62,207,142,0.15); color:var(--green); }
-  .chamado-problema { font-size:13px; color:var(--text2); }
+  .chamado-problema { font-size:12px; color:var(--text2); }
   .chamado-meta { font-size:11px; color:var(--text3); margin-top:6px; font-family:'DM Mono',monospace; }
   .filter-tabs { display:flex; gap:4px; margin-bottom:16px; }
   .filter-tab {
@@ -392,6 +394,28 @@
   }
   .filter-tab:hover { color:var(--text); background:var(--bg3); }
   .filter-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  .sac-kanban-wrap { flex:1; overflow-x:auto; overflow-y:hidden; padding-bottom:16px; min-height:0; }
+  .sac-kanban { display:flex; gap:10px; align-items:flex-start; }
+  .sac-col {
+    flex:1 1 0; min-width:220px; background:var(--bg2); border:1px solid var(--border);
+    border-radius:var(--r); display:flex; flex-direction:column;
+    max-height:calc(100vh - 175px); overflow:hidden;
+  }
+  .sac-col.drag-over { border-color:var(--accent); background:var(--bg3); }
+  .sac-col-header {
+    padding:10px 12px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+  }
+  .sac-col-title { font-size:13px; font-weight:600; }
+  .sac-col-count {
+    font-size:11px; background:var(--bg4); color:var(--text3);
+    padding:2px 7px; border-radius:10px; font-family:'DM Mono',monospace;
+  }
+  .sac-col-body { flex:1; overflow-y:auto; padding:8px; }
+
+  .ci-contact { font-size:12px; color:var(--text3); margin-top:2px; font-family:'DM Mono',monospace; }
+  .ci-phone { color:var(--green); }
 
   .small-modal-box {
     background:var(--bg2); border:1px solid var(--border); border-radius:var(--rl);
@@ -439,7 +463,7 @@
 
 <div id="login-screen" style="display:none">
   <div class="login-box">
-    <div class="login-logo">AutoObras <span>Gestão de Obras</span></div>
+    <div class="login-logo">AutoObras <span>powered by SLight</span></div>
     <div class="form-group">
       <label>Colaborador</label>
       <select id="login-user">
@@ -463,8 +487,10 @@
 <div id="app" style="display:none">
   <div id="sidebar">
     <div class="sidebar-logo">
-      <div class="sidebar-logo-text">AutoObras</div>
-      <div class="sidebar-badge">SLight</div>
+      <div class="sidebar-logo-top">
+        <div class="sidebar-logo-text">AutoObras</div>
+      </div>
+      <div class="sidebar-badge">by SLight</div>
     </div>
     <div class="sidebar-user">
       <div class="user-avatar" id="sidebar-avatar">?</div>
@@ -554,18 +580,36 @@
       </div>
 
       <!-- SAC -->
-      <div id="page-sac" class="page">
-        <div class="section-header">
+      <div id="page-sac" class="page" style="display:flex;flex-direction:column;overflow:hidden">
+        <div class="section-header" style="flex-shrink:0">
           <div class="section-title">SAC — Suporte</div>
           <button class="btn-sm btn-accent" id="btn-novo-chamado"><i class="ti ti-plus"></i> Novo Chamado</button>
         </div>
-        <div class="filter-tabs" id="sac-filters">
-          <div class="filter-tab active" data-filter="todos">Todos</div>
-          <div class="filter-tab" data-filter="aberto">Abertos</div>
-          <div class="filter-tab" data-filter="andamento">Em andamento</div>
-          <div class="filter-tab" data-filter="resolvido">Resolvidos</div>
+        <div class="sac-kanban-wrap">
+          <div class="sac-kanban" id="sac-kanban">
+            <div class="sac-col" data-status="aberto">
+              <div class="sac-col-header">
+                <div class="sac-col-title" style="color:var(--red)"><i class="ti ti-alert-circle" style="margin-right:4px"></i>Aberto</div>
+                <div class="sac-col-count" id="sac-count-aberto">0</div>
+              </div>
+              <div class="sac-col-body" id="sac-body-aberto"></div>
+            </div>
+            <div class="sac-col" data-status="andamento">
+              <div class="sac-col-header">
+                <div class="sac-col-title" style="color:var(--amber)"><i class="ti ti-loader" style="margin-right:4px"></i>Em andamento</div>
+                <div class="sac-col-count" id="sac-count-andamento">0</div>
+              </div>
+              <div class="sac-col-body" id="sac-body-andamento"></div>
+            </div>
+            <div class="sac-col" data-status="resolvido">
+              <div class="sac-col-header">
+                <div class="sac-col-title" style="color:var(--green)"><i class="ti ti-circle-check" style="margin-right:4px"></i>Resolvido</div>
+                <div class="sac-col-count" id="sac-count-resolvido">0</div>
+              </div>
+              <div class="sac-col-body" id="sac-body-resolvido"></div>
+            </div>
+          </div>
         </div>
-        <div id="chamados-list"></div>
       </div>
 
     </div>
@@ -593,6 +637,7 @@
       <div class="modal-tab active" data-tab="checklist"><i class="ti ti-checklist"></i> Checklist</div>
       <div class="modal-tab" data-tab="equipamentos"><i class="ti ti-tool"></i> Equipamentos</div>
       <div class="modal-tab" data-tab="contatos"><i class="ti ti-phone"></i> Contatos</div>
+      <div class="modal-tab" data-tab="historico"><i class="ti ti-history"></i> Histórico</div>
       <div class="modal-tab" data-tab="ia"><i class="ti ti-robot"></i> Análise IA</div>
       <div class="modal-tab" data-tab="exportar"><i class="ti ti-file-export"></i> Exportar</div>
     </div>
@@ -673,12 +718,12 @@
     </div>
     <div class="sm-body">
       <div class="form-field">
-        <label>Obra</label>
-        <select id="nc-obra"></select>
+        <label>Cliente / Contato</label>
+        <input type="text" id="nc-contato" placeholder="Nome do cliente ou contato">
       </div>
       <div class="form-field">
-        <label>Contato / Cliente</label>
-        <input type="text" id="nc-contato" placeholder="Nome do contato">
+        <label>Telefone</label>
+        <input type="tel" id="nc-telefone" placeholder="(00) 00000-0000">
       </div>
       <div class="form-field">
         <label>Problema</label>
@@ -766,6 +811,7 @@ let currentObraId = null;
 let currentChamadoId = null;
 let currentModalTab = 'checklist';
 let sacFilter = 'todos';
+let sacDragId = null;
 let unsubs = [];
 let dragSrcStage = null;
 let dragSrcId = null;
@@ -1340,6 +1386,7 @@ const renderModalTab = (obra) => {
   if (currentModalTab === 'checklist') renderTabChecklist(obra, body);
   else if (currentModalTab === 'equipamentos') renderTabEquipamentos(obra, body);
   else if (currentModalTab === 'contatos') renderTabContatos(obra, body);
+  else if (currentModalTab === 'historico') renderTabHistorico(obra, body);
   else if (currentModalTab === 'ia') renderTabIA(obra, body);
   else if (currentModalTab === 'exportar') renderTabExportar(obra, body);
 };
@@ -1598,20 +1645,34 @@ const renderTabEquipamentos = (obra, container) => {
 const renderTabContatos = (obra, container) => {
   container.innerHTML = '';
 
+  const minDt = (() => {
+    const d = new Date(Date.now() - 7 * 864e5);
+    const p = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  })();
+
   const form = document.createElement('div');
   form.className = 'add-equip-form';
   form.innerHTML = `
     <div style="font-size:13px;font-weight:600;color:var(--text2)">Registrar Contato</div>
     <div class="form-row">
       <div class="form-field">
-        <label>Quem contatou</label>
-        <select id="ct-quem">
-          <option>Jefferson</option><option>Miguel</option><option>Victoria</option><option>Daniel</option><option>Guilherme</option>
-        </select>
+        <label>Registrado por</label>
+        <div style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);font-weight:600">${currentUser}</div>
       </div>
       <div class="form-field">
         <label>Data/Hora</label>
-        <input type="datetime-local" id="ct-dt" value="${localDateTimeStr()}">
+        <input type="datetime-local" id="ct-dt" value="${localDateTimeStr()}" min="${minDt}" max="${localDateTimeStr()}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label>Nome da pessoa contatada</label>
+        <input type="text" id="ct-nome-contato" placeholder="Ex: João Silva">
+      </div>
+      <div class="form-field">
+        <label>Telefone</label>
+        <input type="tel" id="ct-telefone" placeholder="(00) 00000-0000">
       </div>
     </div>
     <div class="form-field">
@@ -1627,16 +1688,18 @@ const renderTabContatos = (obra, container) => {
     </div>
   `;
   form.querySelector('#btn-add-contato').addEventListener('click', async () => {
-    const quem = form.querySelector('#ct-quem').value;
+    const quem = currentUser;
     const dt = form.querySelector('#ct-dt').value;
+    const nomeContato = form.querySelector('#ct-nome-contato').value.trim();
+    const telefone = form.querySelector('#ct-telefone').value.trim();
     const msg = form.querySelector('#ct-msg').value.trim();
     const prox = form.querySelector('#ct-prox').value;
     if (!msg) return alert('Descreva o alinhamento.');
     if (!obra.contatos) obra.contatos = [];
-    obra.contatos.push({ quem, dt, msg, prox });
+    obra.contatos.push({ quem, dt, nomeContato, telefone, msg, prox });
     if (prox) obra.proximoContato = prox;
     await saveObra(obra);
-    await addLog(`[${obra.name}] Contato registrado por ${quem}: ${msg}`, obra.id);
+    await addLog(`[${obra.name}] Contato registrado por ${quem}${nomeContato ? ' com ' + nomeContato : ''}: ${msg}`, obra.id);
     renderTabContatos(obra, container);
   });
   container.appendChild(form);
@@ -1655,6 +1718,11 @@ const renderTabContatos = (obra, container) => {
           <div class="ci-who">${c.quem}</div>
           <div class="ci-dt">${c.dt ? new Date(c.dt).toLocaleString('pt-BR') : ''}</div>
         </div>
+        ${(c.nomeContato || c.telefone) ? `
+        <div class="ci-contact">
+          ${c.nomeContato ? `<span><i class="ti ti-user" style="font-size:10px"></i> ${c.nomeContato}</span>` : ''}
+          ${c.telefone ? `<span class="ci-phone" style="margin-left:10px"><i class="ti ti-phone" style="font-size:10px"></i> ${c.telefone}</span>` : ''}
+        </div>` : ''}
         <div class="ci-msg">${c.msg}</div>
         ${c.prox ? `<div class="ci-prox">Próximo contato: ${fmtDate(new Date(c.prox))}</div>` : ''}
       `;
@@ -1662,6 +1730,24 @@ const renderTabContatos = (obra, container) => {
     });
   }
   container.appendChild(listDiv);
+};
+
+// ===================== TAB HISTÓRICO =====================
+const renderTabHistorico = (obra, container) => {
+  const hist = [...(obra.hist || [])].reverse();
+  if (hist.length === 0) {
+    container.innerHTML = '<div class="empty-state"><i class="ti ti-history"></i>Nenhum registro de histórico para esta obra.</div>';
+    return;
+  }
+  container.innerHTML = hist.map(h => `
+    <div class="hist-item">
+      <div class="hist-dot"></div>
+      <div class="hist-content">
+        <div class="hist-msg">${h.msg}</div>
+        <div class="hist-meta">${h.user || ''} · ${h.dt ? new Date(h.dt).toLocaleString('pt-BR') : ''}</div>
+      </div>
+    </div>
+  `).join('');
 };
 
 // ===================== TAB IA =====================
@@ -1973,24 +2059,55 @@ const renderHistorico = () => {
 
 // ===================== SAC =====================
 const renderSAC = () => {
-  const list = $('#chamados-list');
-  if (!list) return;
-  let filtered = chamados;
-  if (sacFilter !== 'todos') filtered = chamados.filter(c => c.status === sacFilter);
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty-state"><i class="ti ti-headset"></i>Nenhum chamado encontrado.</div>';
-    return;
-  }
-  list.innerHTML = filtered.map(c => `
-    <div class="chamado-item" onclick="openChamado('${c.id}')">
-      <div class="chamado-header">
-        <div class="chamado-cliente">${c.cliente || c.obra}</div>
-        <span class="chamado-status ${statusClass(c.status)}">${c.status}</span>
-      </div>
-      <div class="chamado-problema">${c.problema}</div>
-      <div class="chamado-meta">Responsável: ${c.resp} · ${c.abertura ? new Date(c.abertura).toLocaleDateString('pt-BR') : ''}</div>
-    </div>
-  `).join('');
+  const statuses = ['aberto', 'andamento', 'resolvido'];
+  statuses.forEach(st => {
+    const body = $(`#sac-body-${st}`);
+    const countEl = $(`#sac-count-${st}`);
+    if (!body || !countEl) return;
+    const filtered = chamados.filter(c => c.status === st);
+    countEl.textContent = filtered.length;
+    if (filtered.length === 0) {
+      body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Nenhum chamado</div>';
+      return;
+    }
+    body.innerHTML = '';
+    filtered.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'chamado-item';
+      card.draggable = true;
+      card.dataset.id = c.id;
+      card.innerHTML = `
+        <div class="chamado-header">
+          <div class="chamado-cliente">${c.cliente || ''}</div>
+        </div>
+        ${c.telefone ? `<div style="font-size:11px;color:var(--green);margin-bottom:4px;font-family:'DM Mono',monospace"><i class="ti ti-phone" style="font-size:10px"></i> ${c.telefone}</div>` : ''}
+        <div class="chamado-problema">${c.problema}</div>
+        <div class="chamado-meta">${c.resp} · ${c.abertura ? new Date(c.abertura).toLocaleDateString('pt-BR') : ''}</div>
+      `;
+      card.addEventListener('click', () => openChamado(c.id));
+      card.addEventListener('dragstart', () => { card.classList.add('dragging'); sacDragId = c.id; });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      body.appendChild(card);
+    });
+  });
+
+  // Drop zones
+  $$('.sac-col').forEach(col => {
+    col.ondragover = (e) => { e.preventDefault(); col.classList.add('drag-over'); };
+    col.ondragleave = () => col.classList.remove('drag-over');
+    col.ondrop = async (e) => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!sacDragId) return;
+      const newStatus = col.dataset.status;
+      const c = chamados.find(x => x.id === sacDragId);
+      if (!c || c.status === newStatus) return;
+      c.status = newStatus;
+      await db.collection('chamados').doc(c.id).set({ status: newStatus }, { merge: true });
+      sacDragId = null;
+      renderSAC();
+    };
+  });
 };
 
 const refreshSAC = () => {
@@ -2274,31 +2391,28 @@ const bindEvents = () => {
 
   // SAC
   $('#btn-novo-chamado').addEventListener('click', () => {
-    const sel = $('#nc-obra');
-    sel.innerHTML = obras.map(o => `<option value="${o.id}" data-name="${o.name}" data-prop="${o.prop || ''}">${o.name}</option>`).join('');
+    $('#nc-contato').value = '';
+    $('#nc-telefone').value = '';
+    $('#nc-problema').value = '';
     $('#modal-add-chamado').classList.add('show');
   });
   $('#add-chamado-close').addEventListener('click', () => $('#modal-add-chamado').classList.remove('show'));
   $('#add-chamado-cancel').addEventListener('click', () => $('#modal-add-chamado').classList.remove('show'));
   $('#modal-add-chamado').addEventListener('click', (e) => { if (e.target === $('#modal-add-chamado')) $('#modal-add-chamado').classList.remove('show'); });
   $('#add-chamado-confirm').addEventListener('click', async () => {
-    const obraEl = $('#nc-obra');
-    const obraId = obraEl.value;
-    const obraName = obraEl.selectedOptions[0]?.dataset.name || '';
-    const prop = obraEl.selectedOptions[0]?.dataset.prop || '';
-    const contato = $('#nc-contato').value.trim();
+    const cliente = $('#nc-contato').value.trim();
+    const telefone = $('#nc-telefone').value.trim();
     const problema = $('#nc-problema').value.trim();
     const resp = $('#nc-resp').value;
+    if (!cliente) return alert('Informe o cliente ou contato.');
     if (!problema) return alert('Descreva o problema.');
     const id = genId();
     await db.collection('chamados').doc(id).set({
-      obra: obraName, prop, cliente: contato || obraName, problema,
+      cliente, telefone, problema,
       status: 'aberto', abertura: new Date().toISOString(), resp, hist: [], cl: {}
     });
-    await addLog(`Chamado SAC criado para "${obraName}": ${problema}`, obraId);
+    await addLog(`Chamado SAC criado para "${cliente}": ${problema}`);
     $('#modal-add-chamado').classList.remove('show');
-    $('#nc-contato').value = '';
-    $('#nc-problema').value = '';
     navigate('sac');
   });
 
@@ -2306,14 +2420,6 @@ const bindEvents = () => {
   $('#mc-close').addEventListener('click', () => $('#modal-chamado').classList.remove('show'));
   $('#modal-chamado').addEventListener('click', (e) => { if (e.target === $('#modal-chamado')) $('#modal-chamado').classList.remove('show'); });
 
-  // SAC filters
-  $$('#sac-filters .filter-tab').forEach(t => {
-    t.addEventListener('click', () => {
-      sacFilter = t.dataset.filter;
-      $$('#sac-filters .filter-tab').forEach(x => x.classList.toggle('active', x.dataset.filter === sacFilter));
-      renderSAC();
-    });
-  });
 
   // Search
   $('#global-search').addEventListener('input', (e) => doSearch(e.target.value));
