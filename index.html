@@ -2149,7 +2149,7 @@ const openChamado = (id) => {
   $('#mc-status-badge').innerHTML = `<span class="chamado-status ${statusClass(c.status)}">${c.status}</span>`;
 
   const body = $('#mc-body');
-  const clItems = c.cl || CL_SAC.map(name => ({ name, status: 'pendente', obs: '' }));
+  const clItems = (Array.isArray(c.cl) && c.cl.length > 0) ? c.cl : CL_SAC.map(name => ({ name, status: 'pendente', obs: '' }));
   const hist = [...(c.hist || [])].reverse();
 
   body.innerHTML = `
