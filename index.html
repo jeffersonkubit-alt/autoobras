@@ -518,8 +518,11 @@
 
       <!-- KANBAN -->
       <div id="page-kanban" class="page" style="display:none;flex-direction:column;height:calc(100vh - 65px);padding:0">
-        <div style="padding:16px 24px 0">
-          <div class="kanban-stats" id="kanban-stats"></div>
+        <div style="padding:16px 24px 0;display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div class="kanban-stats" id="kanban-stats" style="flex:1"></div>
+          <button class="btn-sm btn-accent" id="btn-nova-obra-top" style="flex-shrink:0;white-space:nowrap">
+            <i class="ti ti-plus"></i> Nova Obra
+          </button>
         </div>
         <div style="flex:1;overflow:hidden;padding:0 24px 24px">
           <div class="kanban-board" id="kanban-board"></div>
@@ -1098,12 +1101,7 @@ const renderKanban = () => {
     board.appendChild(col);
   });
 
-  // Add obra button at the end
-  const addCol = document.createElement('div');
-  addCol.className = 'add-obra-col';
-  addCol.innerHTML = `<button class="add-obra-btn" id="btn-add-obra-kanban"><i class="ti ti-plus"></i> Nova Obra</button>`;
-  board.appendChild(addCol);
-  addCol.querySelector('#btn-add-obra-kanban').addEventListener('click', openAddObra);
+  // botão nova obra está no topo (btn-nova-obra-top)
 };
 
 const buildKanbanCard = (obra) => {
@@ -1999,6 +1997,11 @@ const bindEvents = () => {
       await moveObraStage(obra, STAGES[idx + 1]);
       renderModalObra();
     }
+  });
+
+  // Nova obra (botão do topo do kanban)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#btn-nova-obra-top')) openAddObra();
   });
 
   // Add obra
