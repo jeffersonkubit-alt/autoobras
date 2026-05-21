@@ -878,7 +878,8 @@ const loadData = () => {
       // Garantir que equips seja sempre um array
       if (data.equips && !Array.isArray(data.equips)) data.equips = Object.values(data.equips);
       if (!data.equips) data.equips = [];
-      return { id: d.id, ...data };
+      // id do documento sempre vence (evita campo 'id' dentro do doc sobrescrever)
+      return { ...data, id: d.id };
     });
     refreshAll();
   });
@@ -900,6 +901,7 @@ const loadData = () => {
 
 const saveObra = async (obra) => {
   const { id, ...data } = obra;
+  if (!id || typeof id !== 'string') { console.error('saveObra: id inválido', id, obra); return; }
   await db.collection('obras').doc(id).set(data, { merge: true });
 };
 
