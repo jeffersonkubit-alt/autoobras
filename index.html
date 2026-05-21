@@ -176,9 +176,8 @@
   }
   .kanban-board {
     display:grid;
-    grid-template-columns:repeat(8, minmax(120px, 1fr));
     gap:8px;
-    height:100%;
+    align-items:flex-start;
   }
   .kanban-col {
     background:var(--bg2); border:1px solid var(--border);
@@ -1087,6 +1086,12 @@ const renderKanban = () => {
 
   const board = $('#kanban-board');
   board.innerHTML = '';
+
+  // Calcular largura real das colunas com base no container disponível
+  const wrap = $('.kanban-wrap');
+  const available = wrap.clientWidth - 32; // 16px padding cada lado
+  const colWidth = Math.max(120, Math.floor((available - (STAGES.length - 1) * 8) / STAGES.length));
+  board.style.gridTemplateColumns = `repeat(${STAGES.length}, ${colWidth}px)`;
 
   STAGES.forEach(stage => {
     const stageObras = obras.filter(o => o.stage === stage);
