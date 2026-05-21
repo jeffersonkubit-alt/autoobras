@@ -171,8 +171,16 @@
   .kanban-stat { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); padding:10px 16px; display:flex; flex-direction:column; gap:2px; }
   .kanban-stat .ks-val { font-size:22px; font-weight:700; }
   .kanban-stat .ks-lbl { font-size:11px; color:var(--text3); }
+  .kanban-wrap {
+    flex:1; overflow-x:auto; overflow-y:hidden; padding:0 24px 24px; min-height:0;
+    scrollbar-width:thin; scrollbar-color:var(--border2) var(--bg3);
+  }
+  .kanban-wrap::-webkit-scrollbar { height:8px; }
+  .kanban-wrap::-webkit-scrollbar-track { background:var(--bg3); border-radius:4px; }
+  .kanban-wrap::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+  .kanban-wrap::-webkit-scrollbar-thumb:hover { background:var(--accent); }
   .kanban-board {
-    display:flex; gap:8px; overflow-x:auto; padding-bottom:16px; flex:1; align-items:flex-start;
+    display:flex; gap:8px; padding-bottom:8px; align-items:flex-start;
   }
   .kanban-col {
     min-width:190px; width:190px; background:var(--bg2); border:1px solid var(--border);
@@ -525,8 +533,8 @@
             <i class="ti ti-plus"></i> Nova Obra
           </button>
         </div>
-        <div style="flex:1;overflow-x:auto;overflow-y:hidden;padding:0 24px 24px;min-height:0">
-          <div class="kanban-board" id="kanban-board" style="height:100%"></div>
+        <div class="kanban-wrap">
+          <div class="kanban-board" id="kanban-board"></div>
         </div>
       </div>
 
@@ -1631,72 +1639,128 @@ const importPDF = (obra, container) => {
 
     const arrBuf = await file.arrayBuffer();
     const pdf = await window.pdfjsLib.getDocument(arrBuf).promise;
-    let fullText = '';
+
+    // Category section header patterns
+    const CAT_PATTERNS = [
+      { cat: 'seguranca', pat: new RegExp('Videomonitoramento|Alarme|CFTV|Controle de Acesso', 'i') },
+      { cat: 'audiovisual', pat: new RegExp('Home Theater|Som Ambiente', 'i') },
+      { cat: 'automacao', pat: new RegExp('Automa[çc]', 'i') },
+      { cat: 'rede', pat: new RegExp('Distribui[çc][aã]o de Rede', 'i') }
+    ];
+    const IGNORE_PAT = new RegExp('SERVI[CÇ]O|SERVICO|Img Item|Resumo|Formas de Pagamento', 'i');
+    // Item: starts with number-dash, ends with Brazilian quantity (1.220,00 or 1220 or 1,00)
+    const ITEM_PAT = new RegExp('^\\d+\\s*-\\s*(.+?)\\s+(\\d[\\d.]*(?:,\\d+)?)(?:\\s+R\\$[\\s\\d.,]+)?$');
+
+    let proposta = '';
+    let cliente = '';
+    const allLines = [];
+
     for (let p = 1; p <= pdf.numPages; p++) {
       const page = await pdf.getPage(p);
       const tc = await page.getTextContent();
-      fullText += tc.items.map(i => i.str).join(' ') + '\n';
+
+      // Group text items by Y coordinate (5pt bucket = same line)
+      const yGroups = {};
+      tc.items.forEach(item => {
+        if (!item.str.trim()) return;
+        const yRaw = item.transform[5];
+        const yKey = Math.round(yRaw / 5) * 5;
+        if (!yGroups[yKey]) yGroups[yKey] = [];
+        yGroups[yKey].push({ str: item.str, x: item.transform[4] });
+      });
+
+      // Sort Y buckets descending (top of page first in PDF coord system)
+      const sortedYs = Object.keys(yGroups).sort((a, b) => b - a);
+      sortedYs.forEach(yKey => {
+        const lineItems = yGroups[yKey].sort((a, b) => a.x - b.x);
+        const text = lineItems.map(i => i.str).join(' ').trim();
+        if (text) allLines.push({ text, pageNum: p });
+      });
     }
 
-    const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    // Extract proposta number and cliente name from all lines
+    allLines.forEach(({ text }) => {
+      const pm = text.match(new RegExp('PROPOSTA[:\\s]+(\\d+)', 'i'));
+      if (pm) proposta = pm[1];
+      const cm = text.match(new RegExp('Cliente:\\s*(.+)', 'i'));
+      if (cm) cliente = cm[1].trim();
+    });
 
-    const catMap = {
-      seguranca: new RegExp('Videomonitoramento|Alarme|CFTV|Controle de Acesso'),
-      audiovisual: new RegExp('Home Theater|Som Ambiente'),
-      automacao: new RegExp('Automa'),
-      rede: new RegExp('Distribuição de Rede|Distribuicao de Rede')
-    };
-
-    const ignorePat = new RegExp('SERVI[CÇ]O|R\\$|Img Item|Resumo|Total|Formas de Pagamento');
-    const itemPat = new RegExp('^(\\d+)\\s*-\\s*(.+?)\\s+(\\d[\\d.,]*)\\s*$');
-
-    let currentCat = 'automacao';
-    const itemsMap = {};
-
-    lines.forEach(line => {
-      if (ignorePat.test(line) || line.length < 3) return;
-
-      // Check item pattern first
-      const m = itemPat.exec(line);
-      if (m) {
-        const nome = m[2].trim().toUpperCase();
-        let rawQtd = m[3].replace(/\./g, '').replace(',', '.');
-        const qtd = parseFloat(rawQtd) || 1;
-        const ehCabo = nome.includes('CABO ') || nome.includes('METRO');
-        const key = nome + '|' + currentCat;
-        if (itemsMap[key]) {
-          itemsMap[key].qtd += qtd;
-        } else {
-          itemsMap[key] = { nome, qtd, cat: currentCat, ehCabo, unidade: ehCabo ? 'm' : 'un' };
+    // Pass 1: find section marker positions
+    const markers = [];
+    allLines.forEach(({ text }, idx) => {
+      for (const { cat, pat } of CAT_PATTERNS) {
+        // Only mark as section if it does NOT match an item pattern (avoids "HOME THEATER 7.1" false match)
+        if (pat.test(text) && !ITEM_PAT.test(text)) {
+          markers.push({ idx, cat });
+          break;
         }
-        return;
+      }
+    });
+
+    // Pass 2: parse items, assign category from last marker before each line
+    const itemsMap = {};
+    allLines.forEach(({ text }, idx) => {
+      if (IGNORE_PAT.test(text) || text.length < 3) return;
+
+      // Strip trailing R$ TOTAL value if present
+      const stripped = text.replace(new RegExp('\\s+R\\$[\\s\\d.,]+$'), '');
+
+      const m = ITEM_PAT.exec(stripped);
+      if (!m) return;
+
+      const nome = m[1].trim().toUpperCase();
+      if (!nome || nome.length < 2) return;
+
+      // Skip lines whose product name IS a section header (e.g. "HOME THEATER 7.1" with no number suffix)
+      let isSection = false;
+      for (const { pat } of CAT_PATTERNS) {
+        if (pat.test(nome)) { isSection = true; break; }
+      }
+      if (isSection) return;
+
+      let rawQtd = m[2].replace(/\./g, '').replace(',', '.');
+      const qtd = parseFloat(rawQtd) || 1;
+      const ehCabo = nome.includes('CABO ') || new RegExp('\\bMETRO\\b').test(nome);
+
+      // Find category: last marker at or before this line
+      let cat = 'automacao';
+      for (let i = markers.length - 1; i >= 0; i--) {
+        if (markers[i].idx <= idx) { cat = markers[i].cat; break; }
       }
 
-      // Check section headers
-      for (const [cat, pat] of Object.entries(catMap)) {
-        if (pat.test(line)) { currentCat = cat; return; }
+      const key = nome + '|' + cat;
+      if (itemsMap[key]) {
+        itemsMap[key].qtd += qtd;
+      } else {
+        itemsMap[key] = { nome, qtd, cat, ehCabo, unidade: ehCabo ? 'm' : 'un' };
       }
     });
 
     const newEquips = Object.values(itemsMap);
-    if (newEquips.length === 0) return alert('Nenhum equipamento encontrado no PDF.');
+    if (newEquips.length === 0) return alert('Nenhum equipamento encontrado no PDF.\n\nVerifique se o PDF é uma proposta SLight válida.');
 
     if (!obra.equips) obra.equips = [];
-
-    // Consolidate with existing
     newEquips.forEach(ne => {
       const existing = obra.equips.find(e => e.nome === ne.nome && e.cat === ne.cat);
-      if (existing) {
-        existing.qtd += ne.qtd;
-      } else {
-        obra.equips.push(ne);
-      }
+      if (existing) { existing.qtd += ne.qtd; } else { obra.equips.push(ne); }
     });
+
+    // Auto-fill proposta and nome do cliente se estiverem em branco
+    let changed = false;
+    if (proposta && !obra.prop) { obra.prop = proposta; changed = true; }
+    if (cliente && !obra.name) { obra.name = cliente; changed = true; }
 
     await saveObra(obra);
     await upsertEquipHistorico(newEquips);
-    alert(`${newEquips.length} equipamento(s) importados!`);
-    renderTabEquipamentos(obra, container);
+
+    let msg = `${newEquips.length} equipamento(s) importados com sucesso!`;
+    if (proposta) msg += `\nProposta: #${proposta}`;
+    if (cliente) msg += `\nCliente: ${cliente}`;
+    alert(msg);
+
+    if (changed) renderModalObra(obra);
+    else renderTabEquipamentos(obra, container);
   };
   input.click();
 };
