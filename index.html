@@ -873,7 +873,13 @@ const initFirebase = () => {
 
 const loadData = () => {
   const u1 = db.collection('obras').onSnapshot(snap => {
-    obras = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    obras = snap.docs.map(d => {
+      const data = d.data();
+      // Garantir que equips seja sempre um array
+      if (data.equips && !Array.isArray(data.equips)) data.equips = Object.values(data.equips);
+      if (!data.equips) data.equips = [];
+      return { id: d.id, ...data };
+    });
     refreshAll();
   });
   const u2 = db.collection('chamados').onSnapshot(snap => {
