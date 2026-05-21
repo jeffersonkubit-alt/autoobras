@@ -172,7 +172,7 @@
   .kanban-stat .ks-val { font-size:22px; font-weight:700; }
   .kanban-stat .ks-lbl { font-size:11px; color:var(--text3); }
   .kanban-wrap {
-    flex:1; overflow-x:auto; overflow-y:hidden; padding:0 24px 24px; min-height:0;
+    flex:1; overflow-x:scroll; overflow-y:hidden; padding:0 24px 24px; min-height:0;
     scrollbar-width:thin; scrollbar-color:var(--border2) var(--bg3);
   }
   .kanban-wrap::-webkit-scrollbar { height:8px; }
@@ -180,11 +180,11 @@
   .kanban-wrap::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
   .kanban-wrap::-webkit-scrollbar-thumb:hover { background:var(--accent); }
   .kanban-board {
-    display:flex; gap:8px; padding-bottom:8px; align-items:flex-start; height:100%;
+    display:flex; gap:8px; padding-bottom:8px; align-items:flex-start;
   }
   .kanban-col {
     min-width:190px; width:190px; background:var(--bg2); border:1px solid var(--border);
-    border-radius:var(--r); display:flex; flex-direction:column; max-height:100%; flex-shrink:0;
+    border-radius:var(--r); display:flex; flex-direction:column; max-height:calc(100vh - 180px); flex-shrink:0;
   }
   .kanban-col-header {
     padding:12px 14px; border-bottom:1px solid var(--border); display:flex;
@@ -939,10 +939,12 @@ const navigate = (page) => {
     if (page === 'kanban') {
       pg.style.display = 'flex';
       content.style.padding = '0';
-      content.style.overflow = 'hidden';
+      content.style.overflowY = 'hidden';
+      content.style.overflowX = 'visible';
     } else {
       content.style.padding = '24px';
-      content.style.overflow = '';
+      content.style.overflowY = '';
+      content.style.overflowX = '';
     }
   }
   $$('.nav-item').forEach(n => {
