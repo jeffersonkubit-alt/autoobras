@@ -176,7 +176,7 @@
   }
   .kanban-board {
     display:grid;
-    grid-template-columns:repeat(8, minmax(140px, 1fr));
+    grid-template-columns:repeat(8, minmax(120px, 1fr));
     gap:8px;
     height:100%;
   }
@@ -727,7 +727,7 @@ const firebaseConfig = {
 const SENHAS = { Jefferson:'HmKKvMbIWD', Miguel:'MIDs4VPukV', Victoria:'v663m7w9LX', Daniel:'hUYVSKHdUe', Guilherme:'HqUZI7uQSF' };
 const SENHA_ADMIN = '1993';
 
-const STAGES = ['Novos clientes','Elaboração de projetos','Aguardando infraestrutura','Executando infraestrutura','Aguardando instalação','Executando instalação','Configuração','Obra entregue'];
+const STAGES = ['Novos clientes','Elaboração de projetos','Aguardando infraestrutura','Executando infraestrutura','Aguardando instalação','Instalação de equipamentos','Configuração','Obra entregue'];
 
 const CATS = {
   automacao: { label:'Automação', cor:'#4f8ef7', icon:'ti-smart-home' },
@@ -812,7 +812,7 @@ const buildChecklist = (obra, stage) => {
     if (hasAV) items.push({ name: '[Audiovisual] Corte em gesso', inherited: false });
   }
 
-  if (stage === 'Executando instalação') {
+  if (stage === 'Instalação de equipamentos') {
     const grouped = {};
     (obra.equips || []).filter(e => !e.ehCabo).forEach(e => {
       if (!grouped[e.cat]) grouped[e.cat] = [];
