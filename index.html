@@ -175,14 +175,12 @@
     flex:1; overflow-x:auto; overflow-y:hidden; padding:0 16px 16px; min-height:0;
   }
   .kanban-board {
-    display:grid;
-    gap:8px;
-    align-items:flex-start;
+    display:flex; gap:8px; align-items:flex-start;
   }
   .kanban-col {
-    background:var(--bg2); border:1px solid var(--border);
+    flex:1 1 0; min-width:0; background:var(--bg2); border:1px solid var(--border);
     border-radius:var(--r); display:flex; flex-direction:column;
-    max-height:calc(100vh - 170px); overflow:hidden; min-width:0;
+    max-height:calc(100vh - 170px); overflow:hidden;
   }
   .kanban-col-header {
     padding:12px 14px; border-bottom:1px solid var(--border); display:flex;
@@ -1086,12 +1084,6 @@ const renderKanban = () => {
 
   const board = $('#kanban-board');
   board.innerHTML = '';
-
-  // Calcular largura real das colunas com base no container disponível
-  const wrap = $('.kanban-wrap');
-  const available = wrap.clientWidth - 32; // 16px padding cada lado
-  const colWidth = Math.max(120, Math.floor((available - (STAGES.length - 1) * 8) / STAGES.length));
-  board.style.gridTemplateColumns = `repeat(${STAGES.length}, ${colWidth}px)`;
 
   STAGES.forEach(stage => {
     const stageObras = obras.filter(o => o.stage === stage);
