@@ -575,8 +575,14 @@
   <div class="modal-box">
     <div class="modal-header">
       <div class="modal-header-info">
-        <div class="modal-title" id="mo-title"></div>
-        <div class="modal-subtitle" id="mo-prop"></div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="modal-title" id="mo-title"></div>
+          <button id="mo-edit-name" title="Editar nome" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px;line-height:1;transition:color 0.15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-pencil"></i></button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="modal-subtitle" id="mo-prop"></div>
+          <button id="mo-edit-prop" title="Editar proposta" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px;line-height:1;transition:color 0.15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-pencil"></i></button>
+        </div>
         <div class="modal-stage-badge" id="mo-stage"></div>
       </div>
       <button class="modal-close" id="mo-close"><i class="ti ti-x"></i></button>
@@ -591,7 +597,12 @@
     <div class="modal-body" id="modal-body"></div>
     <div class="modal-footer">
       <div style="display:flex;align-items:center;gap:8px">
-        <div style="font-size:12px;color:var(--text3)" id="mo-resp-label"></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--text3)">Responsável:</span>
+          <select id="mo-resp-select" style="background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:3px 6px;font-family:inherit;outline:none;cursor:pointer">
+            <option>Jefferson</option><option>Miguel</option><option>Victoria</option><option>Daniel</option><option>Guilherme</option>
+          </select>
+        </div>
         <button class="btn-sm btn-red" id="btn-del-obra" style="font-size:12px;padding:5px 10px"><i class="ti ti-trash"></i> Excluir</button>
       </div>
       <div style="display:flex;gap:8px">
@@ -1212,9 +1223,63 @@ const renderModalObra = () => {
   const obra = obras.find(o => o.id === currentObraId);
   if (!obra) return;
   $('#mo-title').textContent = obra.name;
-  $('#mo-prop').textContent = obra.prop ? 'Proposta: ' + obra.prop : '';
+  $('#mo-prop').textContent = obra.prop ? 'Proposta: ' + obra.prop : 'Sem proposta';
   $('#mo-stage').textContent = obra.stage;
-  $('#mo-resp-label').textContent = 'Responsável: ' + (obra.resp || '');
+
+  // Responsável — select
+  const respSel = $('#mo-resp-select');
+  if (respSel) {
+    respSel.value = obra.resp || 'Jefferson';
+    respSel.onchange = async () => {
+      obra.resp = respSel.value;
+      await saveObra(obra);
+    };
+  }
+
+  // Editar nome
+  const btnName = $('#mo-edit-name');
+  if (btnName) {
+    btnName.onclick = () => {
+      const titleEl = $('#mo-title');
+      const current = obra.name;
+      const inp = document.createElement('input');
+      inp.value = current;
+      inp.style.cssText = 'background:var(--bg4);border:1px solid var(--accent);border-radius:6px;color:var(--text);font-size:18px;font-weight:700;padding:2px 8px;font-family:inherit;outline:none;width:100%;max-width:360px';
+      titleEl.replaceWith(inp);
+      btnName.style.display = 'none';
+      inp.focus(); inp.select();
+      const save = async () => {
+        const val = inp.value.trim();
+        if (val && val !== current) { obra.name = val; await saveObra(obra); }
+        renderModalObra();
+      };
+      inp.addEventListener('blur', save);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = current; inp.blur(); } });
+    };
+  }
+
+  // Editar proposta
+  const btnProp = $('#mo-edit-prop');
+  if (btnProp) {
+    btnProp.onclick = () => {
+      const propEl = $('#mo-prop');
+      const current = obra.prop || '';
+      const inp = document.createElement('input');
+      inp.value = current;
+      inp.placeholder = 'Nº Proposta';
+      inp.style.cssText = 'background:var(--bg4);border:1px solid var(--accent);border-radius:6px;color:var(--text);font-size:13px;padding:2px 8px;font-family:inherit;outline:none;width:120px';
+      propEl.replaceWith(inp);
+      btnProp.style.display = 'none';
+      inp.focus(); inp.select();
+      const save = async () => {
+        const val = inp.value.trim();
+        if (val !== current) { obra.prop = val; await saveObra(obra); }
+        renderModalObra();
+      };
+      inp.addEventListener('blur', save);
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = current; inp.blur(); } });
+    };
+  }
 
   const stageIdx = STAGES.indexOf(obra.stage);
   const hasNext = stageIdx < STAGES.length - 1;
