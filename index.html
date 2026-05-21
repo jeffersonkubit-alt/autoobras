@@ -1585,7 +1585,7 @@ const renderTabContatos = (obra, container) => {
     </div>
     <div class="form-field">
       <label>Próximo contato</label>
-      <input type="date" id="ct-prox">
+      <input type="date" id="ct-prox" value="${new Date(Date.now() + 14*24*60*60*1000).toISOString().slice(0,10)}">
     </div>
     <div style="display:flex;justify-content:flex-end">
       <button class="btn-sm btn-accent" id="btn-add-contato"><i class="ti ti-plus"></i> Registrar</button>
