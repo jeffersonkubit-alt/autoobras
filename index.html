@@ -1289,6 +1289,8 @@ const moveObraStage = async (obra, newStage) => {
   if (!obra.clPorEtapa) obra.clPorEtapa = {};
   obra.clPorEtapa[obra.stage] = clItems.map(i => ({ name: i.name, status: i.status, obs: i.obs || '' }));
   obra.stage = newStage;
+  if (!obra.hist) obra.hist = [];
+  obra.hist.push({ msg: `Etapa alterada para "${newStage}"`, user: currentUser, dt: new Date().toISOString() });
   await saveObra(obra);
   await addLog(`Obra movida para "${newStage}"`, obra.id);
   renderKanban();
@@ -1433,8 +1435,11 @@ const renderTabChecklist = (obra, container) => {
 
     div.querySelector('.cl-publish-btn').addEventListener('click', async () => {
       const obs = clItems[idx].obs || '';
-      const msg = `[${obra.name}] Checklist "${clItems[idx].name}" - ${clItems[idx].status}${obs ? ': ' + obs : ''}`;
-      await addLog(msg, obra.id);
+      const msg = `Checklist "${clItems[idx].name}" — ${clItems[idx].status}${obs ? ': ' + obs : ''}`;
+      if (!obra.hist) obra.hist = [];
+      obra.hist.push({ msg, user: currentUser, dt: new Date().toISOString() });
+      await saveObra(obra);
+      await addLog(`[${obra.name}] ${msg}`, obra.id);
       alert('Publicado no diário!');
     });
 
@@ -1698,6 +1703,8 @@ const renderTabContatos = (obra, container) => {
     if (!obra.contatos) obra.contatos = [];
     obra.contatos.push({ quem, dt, nomeContato, telefone, msg, prox });
     if (prox) obra.proximoContato = prox;
+    if (!obra.hist) obra.hist = [];
+    obra.hist.push({ msg: `Contato registrado por ${quem}${nomeContato ? ' com ' + nomeContato : ''}: ${msg}`, user: quem, dt: new Date().toISOString() });
     await saveObra(obra);
     await addLog(`[${obra.name}] Contato registrado por ${quem}${nomeContato ? ' com ' + nomeContato : ''}: ${msg}`, obra.id);
     renderTabContatos(obra, container);
@@ -2137,8 +2144,8 @@ const openChamado = (id) => {
   const c = chamados.find(x => x.id === id);
   if (!c) return;
 
-  $('#mc-title').textContent = c.cliente || c.obra;
-  $('#mc-sub').textContent = 'Obra: ' + c.obra + (c.prop ? ' · ' + c.prop : '');
+  $('#mc-title').textContent = c.cliente || '';
+  $('#mc-sub').textContent = c.telefone ? c.telefone : (c.abertura ? new Date(c.abertura).toLocaleDateString('pt-BR') : '');
   $('#mc-status-badge').innerHTML = `<span class="chamado-status ${statusClass(c.status)}">${c.status}</span>`;
 
   const body = $('#mc-body');
@@ -2146,6 +2153,44 @@ const openChamado = (id) => {
   const hist = [...(c.hist || [])].reverse();
 
   body.innerHTML = `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="section-title">Informações</div>
+        <button class="btn-sm" id="mc-edit-btn" style="font-size:12px"><i class="ti ti-pencil"></i> Editar</button>
+      </div>
+      <div id="mc-info-view">
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Cliente</div><div style="font-size:13px;font-weight:600;margin-top:2px">${c.cliente || '—'}</div></div>
+          <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Telefone</div><div style="font-size:13px;color:var(--green);margin-top:2px">${c.telefone || '—'}</div></div>
+          <div style="flex:1;min-width:180px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Responsável</div><div style="font-size:13px;margin-top:2px">${c.resp || '—'}</div></div>
+        </div>
+        <div style="margin-top:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px">Problema</div><div style="font-size:13px;color:var(--text2);margin-top:4px;line-height:1.5">${c.problema || '—'}</div></div>
+      </div>
+      <div id="mc-info-edit" style="display:none">
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-field"><label>Cliente</label><input type="text" id="mc-ed-cliente" value="${c.cliente || ''}"></div>
+          <div class="form-field"><label>Telefone</label><input type="tel" id="mc-ed-telefone" value="${c.telefone || ''}"></div>
+        </div>
+        <div class="form-field" style="margin-bottom:8px">
+          <label>Responsável</label>
+          <select id="mc-ed-resp">
+            <option ${c.resp==='Jefferson'?'selected':''}>Jefferson</option>
+            <option ${c.resp==='Miguel'?'selected':''}>Miguel</option>
+            <option ${c.resp==='Victoria'?'selected':''}>Victoria</option>
+            <option ${c.resp==='Daniel'?'selected':''}>Daniel</option>
+            <option ${c.resp==='Guilherme'?'selected':''}>Guilherme</option>
+          </select>
+        </div>
+        <div class="form-field" style="margin-bottom:10px">
+          <label>Problema</label>
+          <textarea id="mc-ed-problema" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;resize:vertical;min-height:60px;outline:none;width:100%">${c.problema || ''}</textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px">
+          <button class="btn-sm" id="mc-edit-cancel">Cancelar</button>
+          <button class="btn-sm btn-accent" id="mc-edit-save"><i class="ti ti-device-floppy"></i> Salvar</button>
+        </div>
+      </div>
+    </div>
     <div style="margin-bottom:16px">
       <div class="section-title" style="margin-bottom:10px">Checklist SAC</div>
       ${clItems.map((item, idx) => `
@@ -2174,13 +2219,33 @@ const openChamado = (id) => {
             <div class="hist-dot"></div>
             <div class="hist-content">
               <div class="hist-msg">${h.msg}</div>
-              <div class="hist-meta">${h.user} · ${h.dt ? new Date(h.dt).toLocaleString('pt-BR') : ''}</div>
+              <div class="hist-meta">${h.user || ''} · ${h.dt ? new Date(h.dt).toLocaleString('pt-BR') : ''}</div>
             </div>
           </div>
         `).join('')}
       </div>
     </div>
   `;
+
+  // Toggle edição
+  body.querySelector('#mc-edit-btn').addEventListener('click', () => {
+    body.querySelector('#mc-info-view').style.display = 'none';
+    body.querySelector('#mc-info-edit').style.display = 'block';
+    body.querySelector('#mc-edit-btn').style.display = 'none';
+  });
+  body.querySelector('#mc-edit-cancel').addEventListener('click', () => {
+    body.querySelector('#mc-info-view').style.display = 'block';
+    body.querySelector('#mc-info-edit').style.display = 'none';
+    body.querySelector('#mc-edit-btn').style.display = '';
+  });
+  body.querySelector('#mc-edit-save').addEventListener('click', async () => {
+    c.cliente = body.querySelector('#mc-ed-cliente').value.trim();
+    c.telefone = body.querySelector('#mc-ed-telefone').value.trim();
+    c.resp = body.querySelector('#mc-ed-resp').value;
+    c.problema = body.querySelector('#mc-ed-problema').value.trim();
+    await db.collection('chamados').doc(c.id).set({ cliente: c.cliente, telefone: c.telefone, resp: c.resp, problema: c.problema }, { merge: true });
+    openChamado(id);
+  });
 
   // CL buttons
   body.querySelectorAll('.cl-btn').forEach(btn => {
@@ -2210,13 +2275,15 @@ const openChamado = (id) => {
       <option value="andamento" ${c.status === 'andamento' ? 'selected' : ''}>Em andamento</option>
       <option value="resolvido" ${c.status === 'resolvido' ? 'selected' : ''}>Resolvido</option>
     </select>
-    <button class="btn-sm btn-accent" id="mc-save-status"><i class="ti ti-device-floppy"></i> Salvar</button>
+    <button class="btn-sm btn-accent" id="mc-save-status"><i class="ti ti-device-floppy"></i> Salvar Status</button>
   `;
 
   footerBtns.querySelector('#mc-save-status').addEventListener('click', async () => {
     const newStatus = footerBtns.querySelector('#mc-status-select').value;
+    c.status = newStatus;
     await db.collection('chamados').doc(c.id).set({ status: newStatus }, { merge: true });
     openChamado(id);
+    renderSAC();
   });
 
   $('#modal-chamado').classList.add('show');
