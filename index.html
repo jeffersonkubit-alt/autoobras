@@ -1087,16 +1087,18 @@ const renderKanban = () => {
   const emAnd = obras.filter(o => o.stage !== 'Obra entregue').length;
   const aguardAq = obras.filter(o => o.stage === 'Aguardando instalação').length;
   const entregues = obras.filter(o => o.stage === 'Obra entregue').length;
+  const semContato = obras.filter(o => o.stage !== 'Obra entregue' && lastContactDays(o) >= 5).length;
 
   const statsEl = $('#kanban-stats');
   statsEl.innerHTML = [
-    { val:total, lbl:'Total' },
-    { val:emAnd, lbl:'Em andamento' },
-    { val:aguardAq, lbl:'Aguard. aquisição' },
-    { val:entregues, lbl:'Entregues' }
+    { val:total, lbl:'Total', cor:'var(--accent)' },
+    { val:emAnd, lbl:'Em andamento', cor:'var(--accent)' },
+    { val:aguardAq, lbl:'Aguard. aquisição', cor:'var(--accent)' },
+    { val:entregues, lbl:'Entregues', cor:'var(--green)' },
+    { val:semContato, lbl:'Sem contato +5d', cor: semContato > 0 ? 'var(--amber)' : 'var(--accent)' }
   ].map(s => `
     <div class="kanban-stat">
-      <div class="ks-val" style="color:var(--accent)">${s.val}</div>
+      <div class="ks-val" style="color:${s.cor}">${s.val}</div>
       <div class="ks-lbl">${s.lbl}</div>
     </div>
   `).join('');
