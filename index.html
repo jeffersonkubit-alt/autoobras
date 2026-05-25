@@ -123,6 +123,7 @@
 
   .page { display:none; }
   .page.active { display:block; }
+  #page-sac.active { display:flex !important; }
 
   .stats-row { display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
   .stat-card {
@@ -594,7 +595,7 @@
       </div>
 
       <!-- SAC -->
-      <div id="page-sac" class="page" style="display:flex;flex-direction:column;overflow:hidden">
+      <div id="page-sac" class="page" style="flex-direction:column;overflow:hidden">
         <div class="section-header" style="flex-shrink:0">
           <div class="section-title">SAC — Suporte</div>
           <button class="btn-sm btn-accent" id="btn-novo-chamado"><i class="ti ti-plus"></i> Novo Chamado</button>
