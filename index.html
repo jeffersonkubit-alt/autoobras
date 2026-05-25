@@ -1587,16 +1587,21 @@ const renderTabEquipamentos = (obra, container) => {
 
         // Edit row
         const editRow = document.createElement('div');
-        editRow.style.cssText = 'display:none;align-items:center;gap:6px;width:100%';
+        editRow.style.cssText = 'display:none;flex-direction:column;gap:6px;width:100%;padding:6px 0';
         editRow.innerHTML = `
-          <div style="flex:1;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${eq.nome}</div>
-          <input type="number" class="ei-edit-qtd" value="${eq.qtd}" min="0.01" step="0.01" style="width:72px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 8px;font-size:13px;font-family:inherit;outline:none">
-          <select class="ei-edit-unit" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 6px;font-size:13px;font-family:inherit;outline:none">
-            <option value="un" ${unit === 'un' ? 'selected' : ''}>un</option>
-            <option value="m" ${unit === 'm' ? 'selected' : ''}>m</option>
-          </select>
-          <button class="ei-save" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:14px;cursor:pointer" title="Salvar"><i class="ti ti-check"></i></button>
-          <button class="ei-cancel-edit" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:14px;color:var(--text3);cursor:pointer" title="Cancelar"><i class="ti ti-x"></i></button>
+          <div style="font-size:12px;color:var(--text2);font-weight:600">${eq.nome}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <select class="ei-edit-cat" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 6px;font-size:12px;font-family:inherit;outline:none">
+              ${Object.keys(CATS).map(k => `<option value="${k}" ${eq.cat === k ? 'selected' : ''}>${CATS[k].label}</option>`).join('')}
+            </select>
+            <input type="number" class="ei-edit-qtd" value="${eq.qtd}" min="0.01" step="0.01" style="width:72px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 8px;font-size:13px;font-family:inherit;outline:none">
+            <select class="ei-edit-unit" style="background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 6px;font-size:13px;font-family:inherit;outline:none">
+              <option value="un" ${unit === 'un' ? 'selected' : ''}>un</option>
+              <option value="m" ${unit === 'm' ? 'selected' : ''}>m</option>
+            </select>
+            <button class="ei-save" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer" title="Salvar"><i class="ti ti-check"></i> Salvar</button>
+            <button class="ei-cancel-edit" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:13px;color:var(--text3);cursor:pointer" title="Cancelar"><i class="ti ti-x"></i></button>
+          </div>
         `;
 
         item.appendChild(viewRow);
@@ -1617,9 +1622,11 @@ const renderTabEquipamentos = (obra, container) => {
         const saveEdit = async () => {
           const newQtd = parseFloat(editRow.querySelector('.ei-edit-qtd').value) || 1;
           const newUnit = editRow.querySelector('.ei-edit-unit').value;
+          const newCat = editRow.querySelector('.ei-edit-cat').value;
           obra.equips[eq.origIdx].qtd = newQtd;
           obra.equips[eq.origIdx].unidade = newUnit;
           obra.equips[eq.origIdx].ehCabo = newUnit === 'm';
+          obra.equips[eq.origIdx].cat = newCat;
           await saveObra(obra);
           renderTabEquipamentos(obra, container);
         };
