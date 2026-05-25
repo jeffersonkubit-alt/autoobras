@@ -502,8 +502,11 @@
     <div class="nav-item active" data-page="dashboard">
       <i class="ti ti-layout-dashboard"></i> Dashboard
     </div>
-    <div class="nav-item" data-page="kanban">
-      <i class="ti ti-columns"></i> Kanban
+    <div class="nav-item" data-page="kanban" data-tipo="home">
+      <i class="ti ti-home"></i> SLight Home
+    </div>
+    <div class="nav-item" data-page="kanban" data-tipo="corp">
+      <i class="ti ti-building"></i> SLight Corp
     </div>
     <div class="nav-item" data-page="agenda">
       <i class="ti ti-calendar"></i> Agenda
@@ -532,20 +535,28 @@
         <div class="stats-row" id="dash-stats"></div>
         <div class="dash-grid">
           <div class="dash-card">
-            <div class="dash-card-title">Funil por Etapa</div>
-            <div id="dash-funil"></div>
+            <div class="dash-card-title" style="color:var(--accent)"><i class="ti ti-home" style="margin-right:6px"></i>SLight Home</div>
+            <div id="dash-home-mini" style="display:flex;gap:8px;margin-bottom:12px"></div>
+            <div id="dash-home-funil"></div>
           </div>
+          <div class="dash-card">
+            <div class="dash-card-title" style="color:var(--purple)"><i class="ti ti-building" style="margin-right:6px"></i>SLight Corp</div>
+            <div id="dash-corp-mini" style="display:flex;gap:8px;margin-bottom:12px"></div>
+            <div id="dash-corp-funil"></div>
+          </div>
+        </div>
+        <div class="dash-grid">
           <div class="dash-card">
             <div class="dash-card-title">Carga por Responsável</div>
             <div id="dash-resp"></div>
           </div>
-        </div>
-        <div class="dash-grid">
           <div class="dash-card">
             <div class="dash-card-title">SAC</div>
             <div class="sac-bar" id="sac-bar-dash"></div>
             <div id="sac-pendentes-list"></div>
           </div>
+        </div>
+        <div class="dash-grid">
           <div class="dash-card">
             <div class="dash-card-title">Sem Contato +5d</div>
             <div class="no-contact-list" id="no-contact-list"></div>
@@ -815,6 +826,7 @@ let currentChamadoId = null;
 let currentModalTab = 'checklist';
 let sacFilter = 'todos';
 let sacDragId = null;
+let currentKanbanTipo = 'home';
 let unsubs = [];
 let dragSrcStage = null;
 let dragSrcId = null;
@@ -949,10 +961,9 @@ const loadData = () => {
   const u1 = db.collection('obras').onSnapshot(snap => {
     obras = snap.docs.map(d => {
       const data = d.data();
-      // Garantir que equips seja sempre um array
       if (data.equips && !Array.isArray(data.equips)) data.equips = Object.values(data.equips);
       if (!data.equips) data.equips = [];
-      // id do documento sempre vence (evita campo 'id' dentro do doc sobrescrever)
+      if (!data.tipo) data.tipo = 'home';
       return { ...data, id: d.id };
     });
     refreshAll();
@@ -1004,11 +1015,12 @@ const upsertEquipHistorico = async (equips) => {
 };
 
 // ===================== NAVIGATION =====================
-const navigate = (page) => {
-  // Limpa display inline de todas as páginas antes de trocar
+const navigate = (page, tipo) => {
   $$('.page').forEach(p => { p.classList.remove('active'); p.style.display = ''; });
   $$('.nav-item').forEach(n => n.classList.remove('active'));
-  const titles = { dashboard:'Dashboard', kanban:'Kanban', agenda:'Agenda', historico:'Histórico', sac:'SAC' };
+  if (page === 'kanban' && tipo) currentKanbanTipo = tipo;
+  const tipoLabel = currentKanbanTipo === 'corp' ? 'SLight Corp' : 'SLight Home';
+  const titles = { dashboard:'Dashboard', kanban: tipoLabel, agenda:'Agenda', historico:'Histórico', sac:'SAC' };
   $('#topbar-title').textContent = titles[page] || page;
   const content = $('#content');
   const pg = $('#page-' + page);
@@ -1024,7 +1036,13 @@ const navigate = (page) => {
     }
   }
   $$('.nav-item').forEach(n => {
-    if (n.dataset.page === page) n.classList.add('active');
+    if (n.dataset.page === page) {
+      if (page === 'kanban') {
+        if (n.dataset.tipo === currentKanbanTipo) n.classList.add('active');
+      } else {
+        n.classList.add('active');
+      }
+    }
   });
   if (page === 'kanban') renderKanban();
   if (page === 'agenda') renderAgenda();
@@ -1042,16 +1060,31 @@ const refreshAll = () => {
 };
 
 // ===================== DASHBOARD =====================
+const renderFunil = (containerId, obrasFiltradas, cor) => {
+  const el = $('#' + containerId);
+  if (!el) return;
+  const maxQtd = Math.max(1, ...STAGES.map(st => obrasFiltradas.filter(o => o.stage === st).length));
+  el.innerHTML = STAGES.map(st => {
+    const cnt = obrasFiltradas.filter(o => o.stage === st).length;
+    const pct = Math.round((cnt / maxQtd) * 100);
+    return `<div class="bar-row">
+      <div class="bar-label" title="${st}">${st}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${cor}"></div></div>
+      <div class="bar-count">${cnt}</div>
+    </div>`;
+  }).join('');
+};
+
 const renderDash = () => {
-  const total = obras.length;
-  const emAndamento = obras.filter(o => o.stage !== 'Obra entregue' && o.stage !== 'Novos clientes').length;
+  const obrasHome = obras.filter(o => (o.tipo || 'home') === 'home');
+  const obrasCorp = obras.filter(o => o.tipo === 'corp');
   const semContato = obras.filter(o => o.stage !== 'Obra entregue' && lastContactDays(o) >= 5).length;
   const sacAberto = chamados.filter(c => c.status === 'aberto').length;
 
   const statsEl = $('#dash-stats');
   statsEl.innerHTML = [
-    { label:'Total Obras', val:total, sub:'cadastradas' },
-    { label:'Em Andamento', val:emAndamento, sub:'obras ativas' },
+    { label:'SLight Home', val:obrasHome.length, sub:'obras cadastradas' },
+    { label:'SLight Corp', val:obrasCorp.length, sub:'obras cadastradas' },
     { label:'Sem Contato +5d', val:semContato, sub:'precisam de contato' },
     { label:'SAC em Aberto', val:sacAberto, sub:'chamados' }
   ].map(s => `
@@ -1062,18 +1095,25 @@ const renderDash = () => {
     </div>
   `).join('');
 
-  // Funil
-  const funilEl = $('#dash-funil');
-  const maxQtd = Math.max(1, ...STAGES.map(st => obras.filter(o => o.stage === st).length));
-  funilEl.innerHTML = STAGES.map(st => {
-    const cnt = obras.filter(o => o.stage === st).length;
-    const pct = Math.round((cnt / maxQtd) * 100);
-    return `<div class="bar-row">
-      <div class="bar-label" title="${st}">${st}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)"></div></div>
-      <div class="bar-count">${cnt}</div>
-    </div>`;
-  }).join('');
+  // Mini stats Home
+  const homeAtivas = obrasHome.filter(o => o.stage !== 'Obra entregue').length;
+  const homeEntregues = obrasHome.filter(o => o.stage === 'Obra entregue').length;
+  $('#dash-home-mini').innerHTML = [
+    { lbl:'Ativas', val:homeAtivas },
+    { lbl:'Entregues', val:homeEntregues }
+  ].map(s => `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px;text-align:center;flex:1"><div style="font-size:18px;font-weight:700;color:var(--accent)">${s.val}</div><div style="font-size:10px;color:var(--text3)">${s.lbl}</div></div>`).join('');
+
+  // Mini stats Corp
+  const corpAtivas = obrasCorp.filter(o => o.stage !== 'Obra entregue').length;
+  const corpEntregues = obrasCorp.filter(o => o.stage === 'Obra entregue').length;
+  $('#dash-corp-mini').innerHTML = [
+    { lbl:'Ativas', val:corpAtivas },
+    { lbl:'Entregues', val:corpEntregues }
+  ].map(s => `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px;text-align:center;flex:1"><div style="font-size:18px;font-weight:700;color:var(--purple)">${s.val}</div><div style="font-size:10px;color:var(--text3)">${s.lbl}</div></div>`).join('');
+
+  // Funils
+  renderFunil('dash-home-funil', obrasHome, 'var(--accent)');
+  renderFunil('dash-corp-funil', obrasCorp, 'var(--purple)');
 
   // Carga por responsável
   const respEl = $('#dash-resp');
@@ -1146,11 +1186,12 @@ const renderDash = () => {
 
 // ===================== KANBAN =====================
 const renderKanban = () => {
-  const total = obras.length;
-  const emAnd = obras.filter(o => o.stage !== 'Obra entregue').length;
-  const aguardAq = obras.filter(o => o.stage === 'Aguardando instalação').length;
-  const entregues = obras.filter(o => o.stage === 'Obra entregue').length;
-  const semContato = obras.filter(o => o.stage !== 'Obra entregue' && lastContactDays(o) >= 5).length;
+  const obrasVisiveis = obras.filter(o => (o.tipo || 'home') === currentKanbanTipo);
+  const total = obrasVisiveis.length;
+  const emAnd = obrasVisiveis.filter(o => o.stage !== 'Obra entregue').length;
+  const aguardAq = obrasVisiveis.filter(o => o.stage === 'Aguardando instalação').length;
+  const entregues = obrasVisiveis.filter(o => o.stage === 'Obra entregue').length;
+  const semContato = obrasVisiveis.filter(o => o.stage !== 'Obra entregue' && lastContactDays(o) >= 5).length;
 
   const statsEl = $('#kanban-stats');
   statsEl.innerHTML = [
@@ -1170,7 +1211,7 @@ const renderKanban = () => {
   board.innerHTML = '';
 
   STAGES.forEach(stage => {
-    const stageObras = obras.filter(o => o.stage === stage);
+    const stageObras = obrasVisiveis.filter(o => o.stage === stage);
     const col = document.createElement('div');
     col.className = 'kanban-col';
     col.innerHTML = `
@@ -2353,7 +2394,7 @@ const closeSearch = () => {
 const bindEvents = () => {
   // Nav
   $$('.nav-item').forEach(n => {
-    n.addEventListener('click', () => navigate(n.dataset.page));
+    n.addEventListener('click', () => navigate(n.dataset.page, n.dataset.tipo));
   });
 
   // Modal obra close
@@ -2451,12 +2492,12 @@ const bindEvents = () => {
     if (!name) return alert('Informe o nome da obra.');
     const id = genId();
     const equips = pendingEquipsNovaObra.length ? [...pendingEquipsNovaObra] : [];
-    await db.collection('obras').doc(id).set({ name, prop, stage: STAGES[0], resp, equips, cl: {}, clPorEtapa: {}, contatos: [], hist: [] });
+    await db.collection('obras').doc(id).set({ name, prop, stage: STAGES[0], resp, equips, tipo: currentKanbanTipo, cl: {}, clPorEtapa: {}, contatos: [], hist: [] });
     await addLog(`Obra "${name}" criada por ${currentUser}`, id);
     if (equips.length) await upsertEquipHistorico(equips);
     pendingEquipsNovaObra = [];
     $('#modal-add-obra').classList.remove('show');
-    navigate('kanban');
+    navigate('kanban', currentKanbanTipo);
   });
 
   // SAC
