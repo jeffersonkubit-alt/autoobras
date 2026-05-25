@@ -599,28 +599,55 @@
           <div class="section-title">SAC — Suporte</div>
           <button class="btn-sm btn-accent" id="btn-novo-chamado"><i class="ti ti-plus"></i> Novo Chamado</button>
         </div>
-        <div class="sac-kanban-wrap">
-          <div class="sac-kanban" id="sac-kanban">
-            <div class="sac-col" data-status="aberto">
+        <div class="sac-kanban-wrap" style="overflow-y:auto;overflow-x:hidden">
+          <!-- SLight Home -->
+          <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-home"></i> SLight Home</div>
+          <div class="sac-kanban" id="sac-kanban-home" style="margin-bottom:20px">
+            <div class="sac-col" data-status="aberto" data-tipo="home">
               <div class="sac-col-header">
                 <div class="sac-col-title" style="color:var(--red)"><i class="ti ti-alert-circle" style="margin-right:4px"></i>Aberto</div>
-                <div class="sac-col-count" id="sac-count-aberto">0</div>
+                <div class="sac-col-count" id="sac-count-home-aberto">0</div>
               </div>
-              <div class="sac-col-body" id="sac-body-aberto"></div>
+              <div class="sac-col-body" id="sac-body-home-aberto"></div>
             </div>
-            <div class="sac-col" data-status="andamento">
+            <div class="sac-col" data-status="andamento" data-tipo="home">
               <div class="sac-col-header">
                 <div class="sac-col-title" style="color:var(--amber)"><i class="ti ti-loader" style="margin-right:4px"></i>Em andamento</div>
-                <div class="sac-col-count" id="sac-count-andamento">0</div>
+                <div class="sac-col-count" id="sac-count-home-andamento">0</div>
               </div>
-              <div class="sac-col-body" id="sac-body-andamento"></div>
+              <div class="sac-col-body" id="sac-body-home-andamento"></div>
             </div>
-            <div class="sac-col" data-status="resolvido">
+            <div class="sac-col" data-status="resolvido" data-tipo="home">
               <div class="sac-col-header">
                 <div class="sac-col-title" style="color:var(--green)"><i class="ti ti-circle-check" style="margin-right:4px"></i>Resolvido</div>
-                <div class="sac-col-count" id="sac-count-resolvido">0</div>
+                <div class="sac-col-count" id="sac-count-home-resolvido">0</div>
               </div>
-              <div class="sac-col-body" id="sac-body-resolvido"></div>
+              <div class="sac-col-body" id="sac-body-home-resolvido"></div>
+            </div>
+          </div>
+          <!-- SLight Corp -->
+          <div style="font-size:13px;font-weight:700;color:var(--purple);margin-bottom:8px;display:flex;align-items:center;gap:6px"><i class="ti ti-building"></i> SLight Corp</div>
+          <div class="sac-kanban" id="sac-kanban-corp">
+            <div class="sac-col" data-status="aberto" data-tipo="corp">
+              <div class="sac-col-header">
+                <div class="sac-col-title" style="color:var(--red)"><i class="ti ti-alert-circle" style="margin-right:4px"></i>Aberto</div>
+                <div class="sac-col-count" id="sac-count-corp-aberto">0</div>
+              </div>
+              <div class="sac-col-body" id="sac-body-corp-aberto"></div>
+            </div>
+            <div class="sac-col" data-status="andamento" data-tipo="corp">
+              <div class="sac-col-header">
+                <div class="sac-col-title" style="color:var(--amber)"><i class="ti ti-loader" style="margin-right:4px"></i>Em andamento</div>
+                <div class="sac-col-count" id="sac-count-corp-andamento">0</div>
+              </div>
+              <div class="sac-col-body" id="sac-body-corp-andamento"></div>
+            </div>
+            <div class="sac-col" data-status="resolvido" data-tipo="corp">
+              <div class="sac-col-header">
+                <div class="sac-col-title" style="color:var(--green)"><i class="ti ti-circle-check" style="margin-right:4px"></i>Resolvido</div>
+                <div class="sac-col-count" id="sac-count-corp-resolvido">0</div>
+              </div>
+              <div class="sac-col-body" id="sac-body-corp-resolvido"></div>
             </div>
           </div>
         </div>
@@ -731,6 +758,19 @@
       <button class="modal-close" id="add-chamado-close"><i class="ti ti-x"></i></button>
     </div>
     <div class="sm-body">
+      <div class="form-field">
+        <label>Modalidade</label>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;cursor:pointer">
+            <input type="radio" name="nc-tipo" value="home" checked style="accent-color:var(--accent)">
+            <i class="ti ti-home" style="color:var(--accent)"></i> SLight Home
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;cursor:pointer">
+            <input type="radio" name="nc-tipo" value="corp" style="accent-color:var(--purple)">
+            <i class="ti ti-building" style="color:var(--purple)"></i> SLight Corp
+          </label>
+        </div>
+      </div>
       <div class="form-field">
         <label>Cliente / Contato</label>
         <input type="text" id="nc-contato" placeholder="Nome do cliente ou contato">
@@ -969,7 +1009,7 @@ const loadData = () => {
     refreshAll();
   });
   const u2 = db.collection('chamados').onSnapshot(snap => {
-    chamados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    chamados = snap.docs.map(d => { const data = d.data(); if (!data.tipo) data.tipo = 'home'; return { id: d.id, ...data }; });
     refreshSAC();
     refreshDash();
     refreshAgenda();
@@ -2109,16 +2149,17 @@ const renderHistorico = () => {
 };
 
 // ===================== SAC =====================
-const renderSAC = () => {
+const renderSACTipo = (tipo) => {
+  const cor = tipo === 'corp' ? 'var(--purple)' : 'var(--accent)';
   const statuses = ['aberto', 'andamento', 'resolvido'];
   statuses.forEach(st => {
-    const body = $(`#sac-body-${st}`);
-    const countEl = $(`#sac-count-${st}`);
+    const body = $(`#sac-body-${tipo}-${st}`);
+    const countEl = $(`#sac-count-${tipo}-${st}`);
     if (!body || !countEl) return;
-    const filtered = chamados.filter(c => c.status === st);
+    const filtered = chamados.filter(c => (c.tipo || 'home') === tipo && c.status === st);
     countEl.textContent = filtered.length;
     if (filtered.length === 0) {
-      body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Nenhum chamado</div>';
+      body.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">Nenhum chamado</div>';
       return;
     }
     body.innerHTML = '';
@@ -2142,8 +2183,7 @@ const renderSAC = () => {
     });
   });
 
-  // Drop zones
-  $$('.sac-col').forEach(col => {
+  $$('.sac-col[data-tipo="' + tipo + '"]').forEach(col => {
     col.ondragover = (e) => { e.preventDefault(); col.classList.add('drag-over'); };
     col.ondragleave = () => col.classList.remove('drag-over');
     col.ondrop = async (e) => {
@@ -2159,6 +2199,11 @@ const renderSAC = () => {
       renderSAC();
     };
   });
+};
+
+const renderSAC = () => {
+  renderSACTipo('home');
+  renderSACTipo('corp');
 };
 
 const refreshSAC = () => {
@@ -2515,11 +2560,13 @@ const bindEvents = () => {
     const telefone = $('#nc-telefone').value.trim();
     const problema = $('#nc-problema').value.trim();
     const resp = $('#nc-resp').value;
+    const tipoEl = document.querySelector('input[name="nc-tipo"]:checked');
+    const tipo = tipoEl ? tipoEl.value : 'home';
     if (!cliente) return alert('Informe o cliente ou contato.');
     if (!problema) return alert('Descreva o problema.');
     const id = genId();
     await db.collection('chamados').doc(id).set({
-      cliente, telefone, problema,
+      cliente, telefone, problema, tipo,
       status: 'aberto', abertura: new Date().toISOString(), resp, hist: [], cl: {}
     });
     await addLog(`Chamado SAC criado para "${cliente}": ${problema}`);
