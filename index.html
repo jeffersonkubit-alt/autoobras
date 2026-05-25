@@ -494,7 +494,10 @@
     </div>
     <div class="sidebar-user">
       <div class="user-avatar" id="sidebar-avatar">?</div>
-      <div class="user-name" id="sidebar-name">Usuário</div>
+      <div style="flex:1;min-width:0">
+        <div class="user-name" id="sidebar-name">Usuário</div>
+        <div onclick="doLogout()" style="font-size:10px;color:var(--text3);cursor:pointer;margin-top:1px;display:inline-flex;align-items:center;gap:3px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'"><i class="ti ti-logout"></i> Sair</div>
+      </div>
     </div>
     <div class="nav-item active" data-page="dashboard">
       <i class="ti ti-layout-dashboard"></i> Dashboard
@@ -2508,10 +2511,16 @@ const doLogin = () => {
   if (!pass) { showLoginErr('Informe a senha.'); return; }
   if (pass === SENHA_ADMIN || SENHAS[user] === pass) {
     currentUser = user;
+    localStorage.setItem('autoobras_user', user);
     startApp();
   } else {
     showLoginErr('Usuário ou senha incorretos.');
   }
+};
+
+const doLogout = () => {
+  localStorage.removeItem('autoobras_user');
+  location.reload();
 };
 
 const showLoginErr = (msg) => {
@@ -2567,6 +2576,12 @@ const startApp = () => {
 
 // ===================== INIT =====================
 window.addEventListener('DOMContentLoaded', () => {
+  const savedUser = localStorage.getItem('autoobras_user');
+  if (savedUser && SENHAS[savedUser]) {
+    currentUser = savedUser;
+    startApp();
+    return;
+  }
   $('#loading-screen').style.display = 'none';
   $('#login-screen').style.display = 'flex';
 
