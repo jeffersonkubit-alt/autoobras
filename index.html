@@ -847,6 +847,7 @@ const CATS = {
 };
 
 const CL_BASE = {
+  'Novos clientes': ['Criar grupo de WhatsApp','Projetos disponíveis'],
   'Elaboração de projetos': ['Projeto finalizado','Projeto enviado / aguardando validação','Reunião de alinhamento'],
   'Aguardando instalação': ['Materiais comprados e entregues','Data de instalação agendada','Equipe designada'],
   'Configuração': ['Programação da central concluída','App configurado para o cliente','Cenas e automações testadas','Testes de conectividade OK'],
@@ -876,6 +877,14 @@ let pendingEquipsNovaObra = [];
 // ===================== HELPERS =====================
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
+
+const showToast = (msg, cor) => {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${cor === 'red' ? 'var(--red)' : cor === 'green' ? 'var(--green)' : 'var(--bg4)'};color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.4);pointer-events:none;opacity:1;transition:opacity 0.4s`;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3000);
+};
 
 // Data/hora local para inputs (sem UTC offset)
 const localDateTimeStr = () => {
@@ -1552,7 +1561,11 @@ const saveClToObra = async (obra, clItems) => {
   if (!obra.clPorEtapa) obra.clPorEtapa = {};
   obra.clPorEtapa[obra.stage] = clItems.map(i => ({ name: i.name, status: i.status, obs: i.obs || '' }));
   obra.cl = obra.clPorEtapa[obra.stage];
-  await saveObra(obra);
+  try {
+    await saveObra(obra);
+  } catch(e) {
+    showToast('Erro ao salvar checklist. Verifique a conexão.', 'red');
+  }
 };
 
 // ===================== TAB EQUIPAMENTOS =====================
