@@ -1559,7 +1559,18 @@ const renderTabChecklist = (obra, container) => {
 
 const saveClToObra = async (obra, clItems) => {
   if (!obra.clPorEtapa) obra.clPorEtapa = {};
-  obra.clPorEtapa[obra.stage] = clItems.map(i => ({ name: i.name, status: i.status, obs: i.obs || '' }));
+  // Salva apenas itens da etapa atual (não herdados) no snapshot corrente
+  obra.clPorEtapa[obra.stage] = clItems
+    .filter(i => !i.inherited)
+    .map(i => ({ name: i.name, status: i.status, obs: i.obs || '' }));
+  // Persiste alterações de itens herdados de volta na etapa de origem
+  clItems.filter(i => i.inherited && i.fromStage).forEach(item => {
+    if (!obra.clPorEtapa[item.fromStage]) obra.clPorEtapa[item.fromStage] = [];
+    const idx = obra.clPorEtapa[item.fromStage].findIndex(x => x.name === item.name);
+    if (idx >= 0) {
+      obra.clPorEtapa[item.fromStage][idx] = { name: item.name, status: item.status, obs: item.obs || '' };
+    }
+  });
   obra.cl = obra.clPorEtapa[obra.stage];
   try {
     await saveObra(obra);
