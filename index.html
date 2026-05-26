@@ -2569,6 +2569,22 @@ const bindEvents = () => {
     const prop = $('#no-prop').value.trim();
     const resp = $('#no-resp').value;
     if (!name) return alert('Informe o nome da obra.');
+
+    // Verificar duplicatas
+    const nameNorm = name.toLowerCase().trim();
+    const mesmNomeProp = obras.filter(o => o.name.toLowerCase().trim() === nameNorm && prop && o.prop === prop);
+    const mesmNome = obras.filter(o => o.name.toLowerCase().trim() === nameNorm && !(prop && o.prop === prop));
+
+    if (mesmNomeProp.length > 0) {
+      const lista = mesmNomeProp.map(o => `• ${o.name}${o.prop ? ' — Proposta ' + o.prop : ''} (${o.stage})`).join('\n');
+      const continuar = confirm(`⚠️ Já existe uma obra com o mesmo nome e número de proposta:\n\n${lista}\n\nDeseja criar mesmo assim?`);
+      if (!continuar) return;
+    } else if (mesmNome.length > 0) {
+      const lista = mesmNome.map(o => `• ${o.name}${o.prop ? ' — Proposta ' + o.prop : ''} (${o.stage})`).join('\n');
+      const continuar = confirm(`ℹ️ Já existem obras cadastradas para este cliente:\n\n${lista}\n\nDeseja criar uma nova obra mesmo assim?`);
+      if (!continuar) return;
+    }
+
     const id = genId();
     const equips = pendingEquipsNovaObra.length ? [...pendingEquipsNovaObra] : [];
     await db.collection('obras').doc(id).set({ name, prop, stage: STAGES[0], resp, equips, tipo: currentKanbanTipo, cl: {}, clPorEtapa: {}, contatos: [], hist: [] });
