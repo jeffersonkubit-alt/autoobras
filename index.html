@@ -1026,6 +1026,12 @@ const getClItems = (obra, stage) => {
       if (CL_BASE[ps]) {
         CL_BASE[ps].forEach(name => {
           if (!seenNames.has(name)) {
+            // Se já está no pSaved (qualquer status), respeita o que está salvo
+            const inPSaved = pSaved && pSaved.find(x => x.name === name);
+            if (inPSaved) {
+              seenNames.add(name); // já tratado acima, não duplicar
+              return;
+            }
             const w = wronglySaved[name];
             const status = w ? w.status : 'pendente';
             const obs = w ? w.obs : '';
@@ -1610,6 +1616,9 @@ const saveClToObra = async (obra, clItems) => {
     const idx = obra.clPorEtapa[item.fromStage].findIndex(x => x.name === item.name);
     if (idx >= 0) {
       obra.clPorEtapa[item.fromStage][idx] = { name: item.name, status: item.status, obs: item.obs || '' };
+    } else {
+      // Item não existia no snapshot da etapa de origem — adiciona agora
+      obra.clPorEtapa[item.fromStage].push({ name: item.name, status: item.status, obs: item.obs || '' });
     }
   });
   obra.cl = obra.clPorEtapa[obra.stage];
