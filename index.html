@@ -1045,6 +1045,13 @@ const getClItems = (obra, stage) => {
     }
   }
 
+  // Itens atrasados (herdados) aparecem primeiro
+  items.sort((a, b) => {
+    if (a.inherited && !b.inherited) return -1;
+    if (!a.inherited && b.inherited) return 1;
+    return 0;
+  });
+
   return items;
 };
 
