@@ -966,10 +966,34 @@ const getClItems = (obra, stage) => {
   const base = buildChecklist(obra, stage);
   const stageIdx = STAGES.indexOf(stage);
   const saved = (obra.clPorEtapa && obra.clPorEtapa[stage]) ? obra.clPorEtapa[stage] : null;
+  const baseNames = new Set(base.map(b => b.name));
+
+  // Itens salvos incorretamente na etapa atual mas que pertencem a etapas anteriores
+  const wronglySaved = {};
 
   let items;
   if (saved) {
-    items = saved.map(s => ({ ...s, inherited: false }));
+    items = [];
+    saved.forEach(s => {
+      if (baseNames.has(s.name)) {
+        items.push({ ...s, inherited: false });
+      } else {
+        // Verifica se pertence a alguma etapa anterior via CL_BASE
+        let fromPrev = null;
+        for (let i = 0; i < stageIdx; i++) {
+          if (CL_BASE[STAGES[i]] && CL_BASE[STAGES[i]].includes(s.name)) {
+            fromPrev = STAGES[i];
+            break;
+          }
+        }
+        if (fromPrev) {
+          wronglySaved[s.name] = { status: s.status, obs: s.obs || '', fromStage: fromPrev };
+        } else {
+          // Item dinâmico (cabo, equipamento) — pertence à etapa atual
+          items.push({ ...s, inherited: false });
+        }
+      }
+    });
     const existingNames = new Set(items.map(i => i.name));
     base.forEach(b => {
       if (!existingNames.has(b.name)) {
@@ -980,17 +1004,34 @@ const getClItems = (obra, stage) => {
     items = base.map(b => ({ name: b.name, status: 'pendente', obs: '', inherited: false }));
   }
 
-  // Inherit pending/partial from previous stages
+  // Herdar pendentes/parciais de etapas anteriores
   if (stageIdx > 0) {
+    const seenNames = new Set(items.map(i => i.name));
     for (let i = 0; i < stageIdx; i++) {
       const ps = STAGES[i];
       const pSaved = obra.clPorEtapa && obra.clPorEtapa[ps];
+
+      // Items do snapshot salvo da etapa anterior
       if (pSaved) {
         pSaved.forEach(pi => {
-          if (pi.status === 'pendente' || pi.status === 'parcial') {
-            const already = items.find(it => it.name === pi.name);
-            if (!already) {
-              items.push({ name: pi.name, status: pi.status, obs: pi.obs || '', inherited: true, fromStage: ps });
+          if ((pi.status === 'pendente' || pi.status === 'parcial') && !seenNames.has(pi.name)) {
+            items.push({ name: pi.name, status: pi.status, obs: pi.obs || '', inherited: true, fromStage: ps });
+            seenNames.add(pi.name);
+          }
+        });
+      }
+
+      // Items do CL_BASE da etapa anterior que ainda não apareceram
+      // (adicionados depois que a obra passou por essa etapa)
+      if (CL_BASE[ps]) {
+        CL_BASE[ps].forEach(name => {
+          if (!seenNames.has(name)) {
+            const w = wronglySaved[name];
+            const status = w ? w.status : 'pendente';
+            const obs = w ? w.obs : '';
+            if (status !== 'concluido') {
+              items.push({ name, status, obs, inherited: true, fromStage: ps });
+              seenNames.add(name);
             }
           }
         });
