@@ -2373,6 +2373,7 @@ const openChamado = (id) => {
       <option value="resolvido" ${c.status === 'resolvido' ? 'selected' : ''}>Resolvido</option>
     </select>
     <button class="btn-sm btn-accent" id="mc-save-status"><i class="ti ti-device-floppy"></i> Salvar Status</button>
+    <button class="btn-sm" id="mc-del-chamado" style="background:var(--bg4);color:var(--red);border:1px solid var(--red);margin-left:auto"><i class="ti ti-trash"></i> Excluir</button>
   `;
 
   footerBtns.querySelector('#mc-save-status').addEventListener('click', async () => {
@@ -2380,6 +2381,15 @@ const openChamado = (id) => {
     c.status = newStatus;
     await db.collection('chamados').doc(c.id).set({ status: newStatus }, { merge: true });
     openChamado(id);
+    renderSAC();
+  });
+
+  footerBtns.querySelector('#mc-del-chamado').addEventListener('click', async () => {
+    const senha = prompt('Digite a senha de administrador para excluir este chamado:');
+    if (senha !== '1993') { alert('Senha incorreta.'); return; }
+    if (!confirm(`Excluir chamado de "${c.cliente || c.obra}"? Esta ação não pode ser desfeita.`)) return;
+    await db.collection('chamados').doc(c.id).delete();
+    $('#modal-chamado').classList.remove('show');
     renderSAC();
   });
 
