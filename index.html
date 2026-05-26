@@ -1418,9 +1418,17 @@ const renderModalObra = () => {
       titleEl.replaceWith(inp);
       btnName.style.display = 'none';
       inp.focus(); inp.select();
+      let nameSaved = false;
       const save = async () => {
+        if (nameSaved) return;
+        nameSaved = true;
         const val = inp.value.trim();
         if (val && val !== current) { obra.name = val; await saveObra(obra); }
+        const restored = document.createElement('div');
+        restored.id = 'mo-title';
+        restored.className = 'modal-title';
+        inp.replaceWith(restored);
+        btnName.style.display = '';
         renderModalObra();
       };
       inp.addEventListener('blur', save);
@@ -1441,9 +1449,17 @@ const renderModalObra = () => {
       propEl.replaceWith(inp);
       btnProp.style.display = 'none';
       inp.focus(); inp.select();
+      let propSaved = false;
       const save = async () => {
+        if (propSaved) return;
+        propSaved = true;
         const val = inp.value.trim();
         if (val !== current) { obra.prop = val; await saveObra(obra); }
+        const restored = document.createElement('div');
+        restored.id = 'mo-prop';
+        restored.className = 'modal-subtitle';
+        inp.replaceWith(restored);
+        btnProp.style.display = '';
         renderModalObra();
       };
       inp.addEventListener('blur', save);
