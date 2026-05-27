@@ -950,7 +950,7 @@ const buildChecklist = (obra, stage) => {
 
   if (stage === 'Executando infraestrutura') {
     const cables = (obra.equips || []).filter(e => e.ehCabo);
-    cables.forEach(e => items.push({ name: '[' + (CATS[e.cat] ? CATS[e.cat].label : e.cat) + '] Infraestrutura: ' + e.nome, inherited: false }));
+    cables.forEach(e => items.push({ name: '[' + (CATS[e.cat] ? CATS[e.cat].label : e.cat) + '] Infraestrutura: ' + e.nome, inherited: false, qtdPrev: e.qtd, unidade: e.unidade || 'm' }));
     const hasAV = (obra.equips || []).some(e => e.cat === 'audiovisual');
     if (hasAV) items.push({ name: '[Audiovisual] Corte em gesso', inherited: false });
   }
@@ -964,7 +964,7 @@ const buildChecklist = (obra, stage) => {
     Object.keys(grouped).forEach(cat => {
       const catInfo = CATS[cat] || { label: cat };
       grouped[cat].forEach(e => {
-        items.push({ name: '[' + catInfo.label + '] Instalar: ' + e.nome, inherited: false });
+        items.push({ name: '[' + catInfo.label + '] Instalar: ' + e.nome, inherited: false, qtdPrev: e.qtd, unidade: e.unidade || 'un' });
       });
     });
   }
@@ -981,12 +981,17 @@ const getClItems = (obra, stage) => {
   // Itens salvos incorretamente na etapa atual mas que pertencem a etapas anteriores
   const wronglySaved = {};
 
+  // Lookup de qtdPrev/unidade por nome (vem sempre do equips atualizado)
+  const baseMap = {};
+  base.forEach(b => { if (b.qtdPrev !== undefined) baseMap[b.name] = { qtdPrev: b.qtdPrev, unidade: b.unidade }; });
+
   let items;
   if (saved) {
     items = [];
     saved.forEach(s => {
       if (baseNames.has(s.name)) {
-        items.push({ ...s, inherited: false });
+        const fromBase = baseMap[s.name] || {};
+        items.push({ ...s, ...fromBase, inherited: false });
       } else {
         // Verifica se pertence a alguma etapa anterior via CL_BASE
         let fromPrev = null;
@@ -1577,11 +1582,11 @@ const renderTabChecklist = (obra, container) => {
   container.innerHTML = '';
 
   clItems.forEach((item, idx) => {
-    const qtdPrev = item.qtdPrev || '';
-    const qtdReal = item.qtdReal || '';
-    const hasQtd = qtdPrev !== '' || qtdReal !== '';
-    const qtdLabel = hasQtd ? `${qtdReal !== '' ? qtdReal : '?'} / ${qtdPrev !== '' ? qtdPrev : '?'}` : '';
-    const qtdClass = hasQtd ? (qtdReal !== '' && qtdPrev !== '' && Number(qtdReal) >= Number(qtdPrev) ? 'done' : 'has-progress') : '';
+    const qtdPrev = item.qtdPrev !== undefined && item.qtdPrev !== '' ? item.qtdPrev : null;
+    const qtdReal = item.qtdReal !== undefined && item.qtdReal !== '' ? item.qtdReal : '';
+    const hasQtdPrev = qtdPrev !== null; // item de equipamento com qtd da proposta
+    const qtdLabel = hasQtdPrev ? `${qtdReal !== '' ? qtdReal : '—'} / ${qtdPrev} ${item.unidade || ''}` : '';
+    const qtdClass = hasQtdPrev && qtdReal !== '' ? (Number(qtdReal) >= Number(qtdPrev) ? 'done' : 'has-progress') : '';
     const hasObs = !!(item.obs && item.obs.trim());
 
     const div = document.createElement('div');
@@ -1594,21 +1599,23 @@ const renderTabChecklist = (obra, container) => {
           ${item.inherited ? `<span class="cl-item-inherited"><i class="ti ti-clock" style="font-size:10px"></i> ${item.fromStage}</span>` : ''}
           <span>${item.name}</span>
         </div>
-        ${hasQtd ? `<span class="cl-item-qty ${qtdClass}">${qtdLabel}</span>` : ''}
+        ${hasQtdPrev ? `<span class="cl-item-qty ${qtdClass}">${qtdLabel}</span>` : ''}
         <div class="cl-status-btns">
           <button class="cl-btn cl-btn-ok ${item.status === 'concluido' ? 'active' : ''}" data-s="concluido" title="Concluído">✓</button>
           <button class="cl-btn cl-btn-part ${item.status === 'parcial' ? 'active' : ''}" data-s="parcial" title="Parcial">~</button>
           <button class="cl-btn cl-btn-pend ${item.status === 'pendente' ? 'active' : ''}" data-s="pendente" title="Pendente">✗</button>
         </div>
-        <button class="cl-obs-toggle ${hasObs ? 'active' : ''}" title="Observação / Quantidade"><i class="ti ti-notes"></i></button>
+        <button class="cl-obs-toggle ${hasObs ? 'active' : ''}" title="Observação${hasQtdPrev ? ' / Quantidade realizada' : ''}"><i class="ti ti-notes"></i></button>
       </div>
-      <div class="cl-expand ${hasObs || hasQtd ? 'open' : ''}">
+      <div class="cl-expand ${hasObs || (hasQtdPrev && qtdReal !== '') ? 'open' : ''}">
+        ${hasQtdPrev ? `
         <div class="cl-qty-row">
-          <label>Previsto</label>
-          <input type="number" class="cl-qty-input cl-qty-prev" min="0" step="1" placeholder="—" value="${qtdPrev}">
-          <label>Realizado</label>
-          <input type="number" class="cl-qty-input cl-qty-real" min="0" step="1" placeholder="—" value="${qtdReal}">
-        </div>
+          <label>Previsto (proposta)</label>
+          <span style="font-size:13px;font-weight:600;color:var(--text2)">${qtdPrev} ${item.unidade || ''}</span>
+          <label style="margin-left:12px">Realizado</label>
+          <input type="number" class="cl-qty-input cl-qty-real" min="0" step="0.01" placeholder="0" value="${qtdReal}">
+          <span style="font-size:12px;color:var(--text3)">${item.unidade || ''}</span>
+        </div>` : ''}
         <textarea class="cl-obs" placeholder="Observação...">${item.obs || ''}</textarea>
         <button class="cl-publish-btn"><i class="ti ti-book-upload"></i> Publicar no diário</button>
       </div>
@@ -1631,25 +1638,21 @@ const renderTabChecklist = (obra, container) => {
       });
     });
 
-    // Qty inputs — auto-sugere status ao alterar realizado
-    const inputPrev = div.querySelector('.cl-qty-prev');
+    // Qty realizado — só existe em itens de equipamento
     const inputReal = div.querySelector('.cl-qty-real');
-
-    const onQtyChange = () => {
-      const prev = parseFloat(inputPrev.value);
-      const real = parseFloat(inputReal.value);
-      clItems[idx].qtdPrev = inputPrev.value !== '' ? Number(inputPrev.value) : '';
-      clItems[idx].qtdReal = inputReal.value !== '' ? Number(inputReal.value) : '';
-      if (!isNaN(real) && !isNaN(prev)) {
-        if (real >= prev) clItems[idx].status = 'concluido';
-        else if (real > 0) clItems[idx].status = 'parcial';
-        else clItems[idx].status = 'pendente';
-      }
-      saveClToObra(obra, clItems);
-      renderTabChecklist(obra, container);
-    };
-    inputPrev.addEventListener('change', onQtyChange);
-    inputReal.addEventListener('change', onQtyChange);
+    if (inputReal) {
+      inputReal.addEventListener('change', () => {
+        const real = parseFloat(inputReal.value);
+        clItems[idx].qtdReal = inputReal.value !== '' ? Number(inputReal.value) : '';
+        if (!isNaN(real) && qtdPrev !== null) {
+          if (real >= Number(qtdPrev)) clItems[idx].status = 'concluido';
+          else if (real > 0) clItems[idx].status = 'parcial';
+          else clItems[idx].status = 'pendente';
+        }
+        saveClToObra(obra, clItems);
+        renderTabChecklist(obra, container);
+      });
+    }
 
     // Obs textarea
     div.querySelector('.cl-obs').addEventListener('change', (e) => {
@@ -1678,7 +1681,7 @@ const saveClToObra = async (obra, clItems) => {
   // Salva apenas itens da etapa atual (não herdados) no snapshot corrente
   const serializeItem = i => {
     const o = { name: i.name, status: i.status, obs: i.obs || '' };
-    if (i.qtdPrev !== '' && i.qtdPrev !== undefined) o.qtdPrev = i.qtdPrev;
+    // qtdPrev não é salvo — vem sempre de obra.equips (proposta)
     if (i.qtdReal !== '' && i.qtdReal !== undefined) o.qtdReal = i.qtdReal;
     return o;
   };
