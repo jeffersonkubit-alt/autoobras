@@ -1004,8 +1004,14 @@ const getClItems = (obra, stage) => {
         if (fromPrev) {
           wronglySaved[s.name] = { status: s.status, obs: s.obs || '', fromStage: fromPrev };
         } else {
-          // Item dinâmico (cabo, equipamento) — pertence à etapa atual
-          items.push({ ...s, inherited: false });
+          // Migração: item salvo com nome antigo (sem prefixo) — tenta casar com base
+          const matchBase = base.find(b => b.name.endsWith(': ' + s.name) || b.name.endsWith(s.name));
+          if (matchBase) {
+            items.push({ ...matchBase, status: s.status, obs: s.obs || '', qtdReal: s.qtdReal || '', inherited: false });
+          } else {
+            // Item dinâmico (cabo, equipamento) — pertence à etapa atual
+            items.push({ ...s, inherited: false });
+          }
         }
       }
     });
