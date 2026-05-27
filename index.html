@@ -1400,7 +1400,15 @@ const buildKanbanCard = (obra) => {
   const clItems = getClItems(obra, obra.stage);
   const total = clItems.length;
   const done = clItems.filter(i => i.status === 'concluido').length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const score = clItems.reduce((sum, item) => {
+    if (item.qtdPrev !== null && item.qtdPrev !== undefined && item.qtdPrev !== '' && item.qtdReal !== '' && item.qtdReal !== undefined) {
+      return sum + Math.min(Number(item.qtdReal) / Number(item.qtdPrev), 1);
+    }
+    if (item.status === 'concluido') return sum + 1;
+    if (item.status === 'parcial') return sum + 0.5;
+    return sum;
+  }, 0);
+  const pct = total > 0 ? Math.round((score / total) * 100) : 0;
   const hasParciais = clItems.some(i => i.status === 'parcial');
   const hasPendAnt = clItems.some(i => i.inherited && (i.status === 'pendente' || i.status === 'parcial'));
   const noContact = obra.stage !== 'Obra entregue' && lastContactDays(obra) >= 5;
@@ -1600,7 +1608,7 @@ const renderTabChecklist = (obra, container) => {
   const sortedKeys = catOrder.filter(k => groups[k]);
 
   sortedKeys.forEach(catKey => {
-    const catInfo = CATS[catKey] || { label: 'Geral', cor: 'var(--text3)', icon: 'ti-list' };
+    const catInfo = CATS[catKey] || { label: 'Tarefas', cor: 'var(--text3)', icon: 'ti-list' };
     const header = document.createElement('div');
     header.style.cssText = 'display:flex;align-items:center;gap:6px;padding:10px 2px 6px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:' + (catInfo.cor || 'var(--text3)');
     header.innerHTML = `<i class="ti ${catInfo.icon || 'ti-list'}" style="font-size:13px"></i>${catInfo.label || 'Geral'}`;
@@ -1622,7 +1630,7 @@ const renderTabChecklist = (obra, container) => {
       <div class="cl-item-row">
         <div class="cl-item-name">
           ${item.inherited ? `<span class="cl-item-inherited"><i class="ti ti-clock" style="font-size:10px"></i> ${item.fromStage}</span>` : ''}
-          <span>${item.name}</span>
+          <span>${item.name.replace(/^\[[^\]]+\]\s*(Instalar|Infraestrutura):\s*/i, '')}</span>
         </div>
         ${hasQtdPrev ? `
         <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
