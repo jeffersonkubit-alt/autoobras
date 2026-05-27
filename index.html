@@ -275,13 +275,24 @@
   }
 
   .cl-item {
-    background:var(--bg3); border:1px solid var(--border); border-radius:var(--r);
+    background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); overflow:hidden;
     padding:12px 14px; margin-bottom:8px;
   }
-  .cl-item-header { display:flex; align-items:center; gap:10px; }
-  .cl-item-name { flex:1; font-size:13px; font-weight:500; color:var(--text); }
-  .cl-item-inherited { font-size:10px; color:var(--amber); background:rgba(245,166,35,0.12); padding:2px 6px; border-radius:4px; font-weight:600; }
+  .cl-item-row { display:flex; align-items:center; gap:8px; padding:10px 14px; cursor:default; }
+  .cl-item-name { flex:1; font-size:13px; font-weight:500; color:var(--text); display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .cl-item-inherited { font-size:10px; color:var(--amber); background:rgba(245,166,35,0.12); padding:2px 6px; border-radius:4px; font-weight:600; white-space:nowrap; }
+  .cl-item-qty { font-size:12px; color:var(--text3); white-space:nowrap; background:var(--bg4); border:1px solid var(--border); border-radius:6px; padding:2px 8px; }
+  .cl-item-qty.has-progress { color:var(--amber); border-color:var(--amber); }
+  .cl-item-qty.done { color:var(--green); border-color:var(--green); }
   .cl-status-btns { display:flex; gap:4px; }
+  .cl-obs-toggle { background:none; border:1px solid var(--border); border-radius:6px; color:var(--text3); width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; flex-shrink:0; transition:all 0.15s; }
+  .cl-obs-toggle:hover, .cl-obs-toggle.active { border-color:var(--accent); color:var(--accent); }
+  .cl-expand { display:none; padding:10px 14px 14px; border-top:1px solid var(--border); background:var(--bg2); flex-direction:column; gap:10px; }
+  .cl-expand.open { display:flex; }
+  .cl-qty-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .cl-qty-row label { font-size:11px; color:var(--text3); }
+  .cl-qty-input { width:70px; background:var(--bg4); border:1px solid var(--border2); border-radius:6px; color:var(--text); padding:4px 8px; font-size:12px; font-family:inherit; outline:none; }
+  .cl-qty-input:focus { border-color:var(--accent); }
   .cl-btn {
     padding:4px 10px; border-radius:6px; font-size:11px; font-weight:600; border:1px solid;
     transition:all 0.15s;
@@ -292,8 +303,7 @@
   .cl-btn-part.active { background:var(--amber); color:#fff; }
   .cl-btn-pend { border-color:var(--red); color:var(--red); background:transparent; }
   .cl-btn-pend.active { background:var(--red); color:#fff; }
-  .cl-obs-wrap { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
-  .cl-obs { width:100%; background:var(--bg4); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:8px 10px; font-size:12px; resize:vertical; min-height:50px; outline:none; }
+  .cl-obs { width:100%; background:var(--bg4); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:8px 10px; font-size:12px; resize:vertical; min-height:50px; outline:none; box-sizing:border-box; }
   .cl-obs:focus { border-color:var(--accent); }
   .cl-publish-btn {
     align-self:flex-end; background:var(--bg4); border:1px solid var(--border); border-radius:6px;
@@ -1015,7 +1025,7 @@ const getClItems = (obra, stage) => {
       if (pSaved) {
         pSaved.forEach(pi => {
           if ((pi.status === 'pendente' || pi.status === 'parcial') && !seenNames.has(pi.name)) {
-            items.push({ name: pi.name, status: pi.status, obs: pi.obs || '', inherited: true, fromStage: ps });
+            items.push({ name: pi.name, status: pi.status, obs: pi.obs || '', qtdPrev: pi.qtdPrev || '', qtdReal: pi.qtdReal || '', inherited: true, fromStage: ps });
             seenNames.add(pi.name);
           }
         });
@@ -1565,46 +1575,98 @@ const renderTabChecklist = (obra, container) => {
     return;
   }
   container.innerHTML = '';
+
   clItems.forEach((item, idx) => {
+    const qtdPrev = item.qtdPrev || '';
+    const qtdReal = item.qtdReal || '';
+    const hasQtd = qtdPrev !== '' || qtdReal !== '';
+    const qtdLabel = hasQtd ? `${qtdReal !== '' ? qtdReal : '?'} / ${qtdPrev !== '' ? qtdPrev : '?'}` : '';
+    const qtdClass = hasQtd ? (qtdReal !== '' && qtdPrev !== '' && Number(qtdReal) >= Number(qtdPrev) ? 'done' : 'has-progress') : '';
+    const hasObs = !!(item.obs && item.obs.trim());
+
     const div = document.createElement('div');
     div.className = 'cl-item';
+    div.style.marginBottom = '6px';
+
     div.innerHTML = `
-      <div class="cl-item-header">
-        <div class="cl-item-name">${item.name} ${item.inherited ? `<span class="cl-item-inherited">← ${item.fromStage}</span>` : ''}</div>
-        <div class="cl-status-btns">
-          <button class="cl-btn cl-btn-ok ${item.status === 'concluido' ? 'active' : ''}" data-idx="${idx}" data-s="concluido">✓</button>
-          <button class="cl-btn cl-btn-part ${item.status === 'parcial' ? 'active' : ''}" data-idx="${idx}" data-s="parcial">~</button>
-          <button class="cl-btn cl-btn-pend ${item.status === 'pendente' ? 'active' : ''}" data-idx="${idx}" data-s="pendente">✗</button>
+      <div class="cl-item-row">
+        <div class="cl-item-name">
+          ${item.inherited ? `<span class="cl-item-inherited"><i class="ti ti-clock" style="font-size:10px"></i> ${item.fromStage}</span>` : ''}
+          <span>${item.name}</span>
         </div>
+        ${hasQtd ? `<span class="cl-item-qty ${qtdClass}">${qtdLabel}</span>` : ''}
+        <div class="cl-status-btns">
+          <button class="cl-btn cl-btn-ok ${item.status === 'concluido' ? 'active' : ''}" data-s="concluido" title="Concluído">✓</button>
+          <button class="cl-btn cl-btn-part ${item.status === 'parcial' ? 'active' : ''}" data-s="parcial" title="Parcial">~</button>
+          <button class="cl-btn cl-btn-pend ${item.status === 'pendente' ? 'active' : ''}" data-s="pendente" title="Pendente">✗</button>
+        </div>
+        <button class="cl-obs-toggle ${hasObs ? 'active' : ''}" title="Observação / Quantidade"><i class="ti ti-notes"></i></button>
       </div>
-      <div class="cl-obs-wrap">
-        <textarea class="cl-obs" data-idx="${idx}" placeholder="Observação...">${item.obs || ''}</textarea>
-        <button class="cl-publish-btn" data-idx="${idx}"><i class="ti ti-book-upload"></i> Publicar no diário</button>
+      <div class="cl-expand ${hasObs || hasQtd ? 'open' : ''}">
+        <div class="cl-qty-row">
+          <label>Previsto</label>
+          <input type="number" class="cl-qty-input cl-qty-prev" min="0" step="1" placeholder="—" value="${qtdPrev}">
+          <label>Realizado</label>
+          <input type="number" class="cl-qty-input cl-qty-real" min="0" step="1" placeholder="—" value="${qtdReal}">
+        </div>
+        <textarea class="cl-obs" placeholder="Observação...">${item.obs || ''}</textarea>
+        <button class="cl-publish-btn"><i class="ti ti-book-upload"></i> Publicar no diário</button>
       </div>
     `;
 
+    // Toggle obs/qty panel
+    div.querySelector('.cl-obs-toggle').addEventListener('click', () => {
+      const expand = div.querySelector('.cl-expand');
+      expand.classList.toggle('open');
+      div.querySelector('.cl-obs-toggle').classList.toggle('active', expand.classList.contains('open'));
+      if (expand.classList.contains('open')) div.querySelector('.cl-obs').focus();
+    });
+
+    // Status buttons
     div.querySelectorAll('.cl-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const i = parseInt(btn.dataset.idx);
-        clItems[i].status = btn.dataset.s;
+        clItems[idx].status = btn.dataset.s;
         saveClToObra(obra, clItems);
         renderTabChecklist(obra, container);
       });
     });
 
+    // Qty inputs — auto-sugere status ao alterar realizado
+    const inputPrev = div.querySelector('.cl-qty-prev');
+    const inputReal = div.querySelector('.cl-qty-real');
+
+    const onQtyChange = () => {
+      const prev = parseFloat(inputPrev.value);
+      const real = parseFloat(inputReal.value);
+      clItems[idx].qtdPrev = inputPrev.value !== '' ? Number(inputPrev.value) : '';
+      clItems[idx].qtdReal = inputReal.value !== '' ? Number(inputReal.value) : '';
+      if (!isNaN(real) && !isNaN(prev)) {
+        if (real >= prev) clItems[idx].status = 'concluido';
+        else if (real > 0) clItems[idx].status = 'parcial';
+        else clItems[idx].status = 'pendente';
+      }
+      saveClToObra(obra, clItems);
+      renderTabChecklist(obra, container);
+    };
+    inputPrev.addEventListener('change', onQtyChange);
+    inputReal.addEventListener('change', onQtyChange);
+
+    // Obs textarea
     div.querySelector('.cl-obs').addEventListener('change', (e) => {
       clItems[idx].obs = e.target.value;
       saveClToObra(obra, clItems);
     });
 
+    // Publicar no diário
     div.querySelector('.cl-publish-btn').addEventListener('click', async () => {
       const obs = clItems[idx].obs || '';
-      const msg = `Checklist "${clItems[idx].name}" — ${clItems[idx].status}${obs ? ': ' + obs : ''}`;
+      const qtdInfo = (clItems[idx].qtdReal !== '' && clItems[idx].qtdPrev !== '') ? ` [${clItems[idx].qtdReal}/${clItems[idx].qtdPrev}]` : '';
+      const msg = `Checklist "${clItems[idx].name}"${qtdInfo} — ${clItems[idx].status}${obs ? ': ' + obs : ''}`;
       if (!obra.hist) obra.hist = [];
       obra.hist.push({ msg, user: currentUser, dt: new Date().toISOString() });
       await saveObra(obra);
       await addLog(`[${obra.name}] ${msg}`, obra.id);
-      alert('Publicado no diário!');
+      showToast('Publicado no diário!', 'green');
     });
 
     container.appendChild(div);
@@ -1614,18 +1676,23 @@ const renderTabChecklist = (obra, container) => {
 const saveClToObra = async (obra, clItems) => {
   if (!obra.clPorEtapa) obra.clPorEtapa = {};
   // Salva apenas itens da etapa atual (não herdados) no snapshot corrente
+  const serializeItem = i => {
+    const o = { name: i.name, status: i.status, obs: i.obs || '' };
+    if (i.qtdPrev !== '' && i.qtdPrev !== undefined) o.qtdPrev = i.qtdPrev;
+    if (i.qtdReal !== '' && i.qtdReal !== undefined) o.qtdReal = i.qtdReal;
+    return o;
+  };
   obra.clPorEtapa[obra.stage] = clItems
     .filter(i => !i.inherited)
-    .map(i => ({ name: i.name, status: i.status, obs: i.obs || '' }));
+    .map(serializeItem);
   // Persiste alterações de itens herdados de volta na etapa de origem
   clItems.filter(i => i.inherited && i.fromStage).forEach(item => {
     if (!obra.clPorEtapa[item.fromStage]) obra.clPorEtapa[item.fromStage] = [];
     const idx = obra.clPorEtapa[item.fromStage].findIndex(x => x.name === item.name);
     if (idx >= 0) {
-      obra.clPorEtapa[item.fromStage][idx] = { name: item.name, status: item.status, obs: item.obs || '' };
+      obra.clPorEtapa[item.fromStage][idx] = serializeItem(item);
     } else {
-      // Item não existia no snapshot da etapa de origem — adiciona agora
-      obra.clPorEtapa[item.fromStage].push({ name: item.name, status: item.status, obs: item.obs || '' });
+      obra.clPorEtapa[item.fromStage].push(serializeItem(item));
     }
   });
   obra.cl = obra.clPorEtapa[obra.stage];
