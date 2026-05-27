@@ -1599,23 +1599,20 @@ const renderTabChecklist = (obra, container) => {
           ${item.inherited ? `<span class="cl-item-inherited"><i class="ti ti-clock" style="font-size:10px"></i> ${item.fromStage}</span>` : ''}
           <span>${item.name}</span>
         </div>
-        ${hasQtdPrev ? `<span class="cl-item-qty ${qtdClass}">${qtdLabel}</span>` : ''}
+        ${hasQtdPrev ? `
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <input type="number" class="cl-qty-real" min="0" step="0.01" placeholder="0" value="${qtdReal}"
+            style="width:60px;background:var(--bg4);border:1px solid var(--border2);border-radius:6px;color:var(--text);padding:4px 6px;font-size:12px;font-family:inherit;outline:none;text-align:center">
+          <span style="font-size:11px;color:var(--text3)">/ ${qtdPrev} ${item.unidade || ''}</span>
+        </div>` : ''}
         <div class="cl-status-btns">
           <button class="cl-btn cl-btn-ok ${item.status === 'concluido' ? 'active' : ''}" data-s="concluido" title="Concluído">✓</button>
           <button class="cl-btn cl-btn-part ${item.status === 'parcial' ? 'active' : ''}" data-s="parcial" title="Parcial">~</button>
           <button class="cl-btn cl-btn-pend ${item.status === 'pendente' ? 'active' : ''}" data-s="pendente" title="Pendente">✗</button>
         </div>
-        <button class="cl-obs-toggle ${hasObs ? 'active' : ''}" title="Observação${hasQtdPrev ? ' / Quantidade realizada' : ''}"><i class="ti ti-notes"></i></button>
+        <button class="cl-obs-toggle ${hasObs ? 'active' : ''}" title="Observação"><i class="ti ti-notes"></i></button>
       </div>
-      <div class="cl-expand ${hasObs || (hasQtdPrev && qtdReal !== '') ? 'open' : ''}">
-        ${hasQtdPrev ? `
-        <div class="cl-qty-row">
-          <label>Previsto (proposta)</label>
-          <span style="font-size:13px;font-weight:600;color:var(--text2)">${qtdPrev} ${item.unidade || ''}</span>
-          <label style="margin-left:12px">Realizado</label>
-          <input type="number" class="cl-qty-input cl-qty-real" min="0" step="0.01" placeholder="0" value="${qtdReal}">
-          <span style="font-size:12px;color:var(--text3)">${item.unidade || ''}</span>
-        </div>` : ''}
+      <div class="cl-expand ${hasObs ? 'open' : ''}">
         <textarea class="cl-obs" placeholder="Observação...">${item.obs || ''}</textarea>
         <button class="cl-publish-btn"><i class="ti ti-book-upload"></i> Publicar no diário</button>
       </div>
@@ -1632,7 +1629,12 @@ const renderTabChecklist = (obra, container) => {
     // Status buttons
     div.querySelectorAll('.cl-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        clItems[idx].status = btn.dataset.s;
+        const s = btn.dataset.s;
+        clItems[idx].status = s;
+        if (qtdPrev !== null) {
+          if (s === 'concluido') clItems[idx].qtdReal = Number(qtdPrev);
+          else if (s === 'pendente') clItems[idx].qtdReal = '';
+        }
         saveClToObra(obra, clItems);
         renderTabChecklist(obra, container);
       });
