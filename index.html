@@ -569,7 +569,7 @@
         </div>
         <div class="dash-grid">
           <div class="dash-card">
-            <div class="dash-card-title">Sem Contato +5d</div>
+            <div class="dash-card-title">Contato Atrasado</div>
             <div class="no-contact-list" id="no-contact-list"></div>
           </div>
         </div>
@@ -926,14 +926,30 @@ const daysDiff = (d) => {
   return Math.floor((Date.now() - dt.getTime()) / 86400000);
 };
 
-const lastContactDays = (obra) => {
-  if (!obra.contatos || obra.contatos.length === 0) {
-    const created = obra.id ? daysDiff(new Date(obra.id)) : 999;
-    return created;
+const isContatoAtrasado = (obra) => {
+  if (obra.stage === 'Obra entregue') return false;
+  const contatos = obra.contatos || [];
+  // Verifica se o último contato tem "próximo contato" definido
+  if (contatos.length > 0) {
+    const last = contatos[contatos.length - 1];
+    if (last.prox) {
+      return new Date(last.prox) < new Date();
+    }
+    // Sem próximo contato definido: vence 14 dias após o último contato
+    const dtLast = last.dt ? new Date(last.dt) : null;
+    if (dtLast) return daysDiff(dtLast) >= 14;
   }
-  const last = obra.contatos[obra.contatos.length - 1];
-  const dt = last.dt ? new Date(last.dt) : null;
-  return dt ? daysDiff(dt) : 999;
+  // Sem nenhum contato: vence 14 dias após criação
+  const created = obra.id ? new Date(Number(obra.id)) : null;
+  if (created) return daysDiff(created) >= 14;
+  return false;
+};
+
+const proximoContatoLabel = (obra) => {
+  const contatos = obra.contatos || [];
+  if (contatos.length === 0) return null;
+  const last = contatos[contatos.length - 1];
+  return last.prox ? new Date(last.prox) : null;
 };
 
 const ts = () => Date.now();
@@ -1203,14 +1219,14 @@ const renderFunil = (containerId, obrasFiltradas, cor) => {
 const renderDash = () => {
   const obrasHome = obras.filter(o => (o.tipo || 'home') === 'home');
   const obrasCorp = obras.filter(o => o.tipo === 'corp');
-  const semContato = obras.filter(o => o.stage !== 'Obra entregue' && lastContactDays(o) >= 5).length;
+  const semContato = obras.filter(o => isContatoAtrasado(o)).length;
   const sacAberto = chamados.filter(c => c.status === 'aberto').length;
 
   const statsEl = $('#dash-stats');
   statsEl.innerHTML = [
     { label:'SLight Home', val:obrasHome.length, sub:'obras cadastradas' },
     { label:'SLight Corp', val:obrasCorp.length, sub:'obras cadastradas' },
-    { label:'Sem Contato +5d', val:semContato, sub:'precisam de contato' },
+    { label:'Contato Atrasado', val:semContato, sub:'aguardando contato' },
     { label:'SAC em Aberto', val:sacAberto, sub:'chamados' }
   ].map(s => `
     <div class="stat-card">
@@ -1292,15 +1308,15 @@ const renderDash = () => {
 
   // No contact
   const ncList = $('#no-contact-list');
-  const nc = obras.filter(o => o.stage !== 'Obra entregue' && lastContactDays(o) >= 5);
+  const nc = obras.filter(o => isContatoAtrasado(o));
   if (nc.length === 0) {
-    ncList.innerHTML = '<div class="empty-state" style="padding:16px"><i class="ti ti-check"></i>Todos com contato recente</div>';
+    ncList.innerHTML = '<div class="empty-state" style="padding:16px"><i class="ti ti-check"></i>Nenhum contato atrasado</div>';
   } else {
     ncList.innerHTML = nc.map(o => `
       <div class="nc-item">
         <div class="nc-info">
           <div class="nc-name">${o.name}</div>
-          <div class="nc-days">${lastContactDays(o)}d sem contato</div>
+          <div class="nc-days">${(() => { const p = proximoContatoLabel(o); return p ? 'Próximo contato: ' + p.toLocaleDateString('pt-BR') + ' (vencido)' : 'Sem data de contato definida'; })()}</div>
           <div class="nc-resp">${o.resp} · ${o.stage}</div>
         </div>
         <button class="btn-sm" onclick="openObra('${o.id}')"><i class="ti ti-phone"></i></button>
@@ -1316,7 +1332,7 @@ const renderKanban = () => {
   const emAnd = obrasVisiveis.filter(o => o.stage !== 'Obra entregue').length;
   const aguardAq = obrasVisiveis.filter(o => o.stage === 'Aguardando instalação').length;
   const entregues = obrasVisiveis.filter(o => o.stage === 'Obra entregue').length;
-  const semContato = obrasVisiveis.filter(o => o.stage !== 'Obra entregue' && lastContactDays(o) >= 5).length;
+  const semContato = obrasVisiveis.filter(o => isContatoAtrasado(o)).length;
 
   const statsEl = $('#kanban-stats');
   statsEl.innerHTML = [
@@ -1324,7 +1340,7 @@ const renderKanban = () => {
     { val:emAnd, lbl:'Em andamento', cor:'var(--accent)' },
     { val:aguardAq, lbl:'Aguard. aquisição', cor:'var(--accent)' },
     { val:entregues, lbl:'Entregues', cor:'var(--green)' },
-    { val:semContato, lbl:'Sem contato +5d', cor: semContato > 0 ? 'var(--amber)' : 'var(--accent)' }
+    { val:semContato, lbl:'Contato atrasado', cor: semContato > 0 ? 'var(--amber)' : 'var(--accent)' }
   ].map(s => `
     <div class="kanban-stat">
       <div class="ks-val" style="color:${s.cor}">${s.val}</div>
@@ -1411,31 +1427,23 @@ const buildKanbanCard = (obra) => {
   const pct = total > 0 ? Math.round((score / total) * 100) : 0;
   const hasParciais = clItems.some(i => i.status === 'parcial');
   const hasPendAnt = clItems.some(i => i.inherited && (i.status === 'pendente' || i.status === 'parcial'));
-  const noContact = obra.stage !== 'Obra entregue' && lastContactDays(obra) >= 5;
+  const noContact = isContatoAtrasado(obra);
 
   let tags = '';
   if (hasParciais) tags += `<span class="card-tag tag-blue">parciais</span>`;
   if (hasPendAnt) tags += `<span class="card-tag tag-red">pendentes ant.</span>`;
+  if (noContact) tags += `<span class="card-tag tag-amber">contato atrasado</span>`;
 
   // Último contato
   let lastContactHtml = '';
   if (obra.contatos && obra.contatos.length > 0) {
     const last = obra.contatos[obra.contatos.length - 1];
-    const dias = lastContactDays(obra);
-    const cor = dias >= 5 ? 'var(--red)' : dias >= 3 ? 'var(--amber)' : 'var(--text3)';
     const dtStr = last.dt ? new Date(last.dt).toLocaleDateString('pt-BR') : '';
-    lastContactHtml = `<div class="card-date" style="color:${cor}">↩ Último: ${dtStr}${dias >= 5 ? ' ('+dias+'d atrás)' : ''}</div>`;
-  }
-
-  // Próximo contato
-  let proxContactHtml = '';
-  if (obra.proximoContato && obra.stage !== 'Obra entregue') {
-    const prox = new Date(obra.proximoContato);
-    const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const diffDias = Math.ceil((prox - hoje) / 864e5);
-    const cor = diffDias < 0 ? 'var(--red)' : diffDias <= 3 ? 'var(--amber)' : 'var(--green)';
-    const label = diffDias < 0 ? `atrasado ${Math.abs(diffDias)}d` : diffDias === 0 ? 'hoje' : `em ${diffDias}d`;
-    proxContactHtml = `<div class="card-date" style="color:${cor}">→ Próximo: ${prox.toLocaleDateString('pt-BR')} (${label})</div>`;
+    const proxDt = last.prox ? new Date(last.prox) : null;
+    const proxStr = proxDt ? proxDt.toLocaleDateString('pt-BR') : null;
+    const atrasado = isContatoAtrasado(obra);
+    const cor = atrasado ? 'var(--red)' : proxDt ? 'var(--text3)' : 'var(--text3)';
+    lastContactHtml = `<div class="card-date" style="color:${cor}">↩ ${dtStr}${proxStr ? ' · Próx: ' + proxStr : ''}</div>`;
   }
 
   card.innerHTML = `
@@ -1443,7 +1451,7 @@ const buildKanbanCard = (obra) => {
     <div class="card-prop">${obra.prop || ''}</div>
     <div class="card-resp">${obra.resp || ''}</div>
     ${tags ? `<div class="card-tags">${tags}</div>` : ''}
-    ${lastContactHtml || proxContactHtml ? `<div class="card-dates">${lastContactHtml}${proxContactHtml}</div>` : ''}
+    ${lastContactHtml ? `<div class="card-dates">${lastContactHtml}</div>` : ''}
     <div class="progress-bar-wrap">
       <div class="progress-bar-track"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
       <div class="progress-label">${done}/${total} itens concluídos</div>
