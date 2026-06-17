@@ -484,6 +484,7 @@
         <option>Victoria</option>
         <option>Daniel</option>
         <option>Guilherme</option>
+        <option>Aline</option>
       </select>
     </div>
     <div class="form-group">
@@ -699,7 +700,7 @@
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:12px;color:var(--text3)">Responsável:</span>
           <select id="mo-resp-select" style="background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:3px 6px;font-family:inherit;outline:none;cursor:pointer">
-            <option>Jefferson</option><option>Miguel</option><option>Victoria</option><option>Daniel</option><option>Guilherme</option>
+            <option>Jefferson</option><option>Miguel</option><option>Victoria</option><option>Daniel</option><option>Guilherme</option><option>Aline</option>
           </select>
         </div>
         <button class="btn-sm btn-red" id="btn-del-obra" style="font-size:12px;padding:5px 10px"><i class="ti ti-trash"></i> Excluir</button>
@@ -751,6 +752,7 @@
           <option>Victoria</option>
           <option>Daniel</option>
           <option>Guilherme</option>
+          <option>Aline</option>
         </select>
       </div>
     </div>
@@ -802,6 +804,7 @@
           <option>Victoria</option>
           <option>Daniel</option>
           <option>Guilherme</option>
+          <option>Aline</option>
         </select>
       </div>
     </div>
@@ -844,7 +847,7 @@ const firebaseConfig = {
   appId: '1:538674823738:web:c7705031901604eb03eb03'
 };
 
-const SENHAS = { Jefferson:'HmKKvMbIWD', Miguel:'MIDs4VPukV', Victoria:'v663m7w9LX', Daniel:'hUYVSKHdUe', Guilherme:'HqUZI7uQSF' };
+const SENHAS = { Jefferson:'HmKKvMbIWD', Miguel:'MIDs4VPukV', Victoria:'v663m7w9LX', Daniel:'hUYVSKHdUe', Guilherme:'HqUZI7uQSF', Aline:'Nt5wJbXcPm' };
 const SENHA_ADMIN = '1993';
 
 const STAGES = ['Novos clientes','Elaboração de projetos','Aguardando infraestrutura','Executando infraestrutura','Aguardando instalação','Instalação de equipamentos','Configuração','Obra entregue'];
@@ -1258,7 +1261,7 @@ const renderDash = () => {
 
   // Carga por responsável
   const respEl = $('#dash-resp');
-  const resps = ['Jefferson','Miguel','Victoria','Daniel','Guilherme'];
+  const resps = ['Jefferson','Miguel','Victoria','Daniel','Guilherme','Aline'];
   const maxR = Math.max(1, ...resps.map(r => obras.filter(o => o.resp === r).length));
   respEl.innerHTML = resps.map(r => {
     const ativas = obras.filter(o => o.resp === r && o.stage !== 'Obra entregue').length;
@@ -2487,6 +2490,7 @@ const openChamado = (id) => {
             <option ${c.resp==='Victoria'?'selected':''}>Victoria</option>
             <option ${c.resp==='Daniel'?'selected':''}>Daniel</option>
             <option ${c.resp==='Guilherme'?'selected':''}>Guilherme</option>
+            <option ${c.resp==='Aline'?'selected':''}>Aline</option>
           </select>
         </div>
         <div class="form-field" style="margin-bottom:10px">
