@@ -1472,10 +1472,20 @@ const buildKanbanCard = (obra) => {
 };
 
 const moveObraStage = async (obra, newStage) => {
-  // Save snapshot of current checklist
   const clItems = getClItems(obra, obra.stage);
   if (!obra.clPorEtapa) obra.clPorEtapa = {};
-  obra.clPorEtapa[obra.stage] = clItems.map(i => ({ name: i.name, status: i.status, obs: i.obs || '' }));
+  const serItem = i => {
+    const o = { name: i.name, status: i.status, obs: i.obs || '' };
+    if (i.qtdReal !== '' && i.qtdReal !== undefined) o.qtdReal = i.qtdReal;
+    return o;
+  };
+  obra.clPorEtapa[obra.stage] = clItems.filter(i => !i.inherited).map(serItem);
+  clItems.filter(i => i.inherited && i.fromStage).forEach(item => {
+    if (!obra.clPorEtapa[item.fromStage]) obra.clPorEtapa[item.fromStage] = [];
+    const idx = obra.clPorEtapa[item.fromStage].findIndex(x => x.name === item.name);
+    if (idx >= 0) obra.clPorEtapa[item.fromStage][idx] = serItem(item);
+    else obra.clPorEtapa[item.fromStage].push(serItem(item));
+  });
   obra.stage = newStage;
   if (!obra.hist) obra.hist = [];
   obra.hist.push({ msg: `Etapa alterada para "${newStage}"`, user: currentUser, dt: new Date().toISOString() });
@@ -2321,11 +2331,6 @@ const renderAgenda = () => {
     if (o.proximoContato) {
       items.push({ obra: o, dt: new Date(o.proximoContato) });
     }
-    if (o.contatos) {
-      o.contatos.forEach(c => {
-        if (c.prox) items.push({ obra: o, dt: new Date(c.prox) });
-      });
-    }
   });
   items.sort((a, b) => a.dt - b.dt);
   if (items.length === 0) {
@@ -2507,7 +2512,7 @@ const openChamado = (id) => {
       <div class="section-title" style="margin-bottom:10px">Checklist SAC</div>
       ${clItems.map((item, idx) => `
         <div class="cl-item" style="margin-bottom:6px">
-          <div class="cl-item-header">
+          <div class="cl-item-row">
             <div class="cl-item-name">${item.name}</div>
             <div class="cl-status-btns">
               <button class="cl-btn cl-btn-ok ${item.status === 'concluido' ? 'active' : ''}" data-cidx="${idx}" data-cs="concluido">✓</button>
@@ -2517,6 +2522,7 @@ const openChamado = (id) => {
           </div>
         </div>
       `).join('')}
+
     </div>
     <div class="separator"></div>
     <div style="margin-bottom:16px">
@@ -2804,7 +2810,9 @@ const bindEvents = () => {
   $('#add-chamado-close').addEventListener('click', () => $('#modal-add-chamado').classList.remove('show'));
   $('#add-chamado-cancel').addEventListener('click', () => $('#modal-add-chamado').classList.remove('show'));
   $('#modal-add-chamado').addEventListener('click', (e) => { if (e.target === $('#modal-add-chamado')) $('#modal-add-chamado').classList.remove('show'); });
-  $('#add-chamado-confirm').addEventListener('click', async () => {
+  $('#add-chamado-confirm').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (btn.disabled) return;
     const cliente = $('#nc-contato').value.trim();
     const telefone = $('#nc-telefone').value.trim();
     const problema = $('#nc-problema').value.trim();
@@ -2813,12 +2821,14 @@ const bindEvents = () => {
     const tipo = tipoEl ? tipoEl.value : 'home';
     if (!cliente) return alert('Informe o cliente ou contato.');
     if (!problema) return alert('Descreva o problema.');
+    btn.disabled = true;
     const id = genId();
     await db.collection('chamados').doc(id).set({
       cliente, telefone, problema, tipo,
       status: 'aberto', abertura: new Date().toISOString(), resp, hist: [], cl: {}
     });
     await addLog(`Chamado SAC criado para "${cliente}": ${problema}`);
+    btn.disabled = false;
     $('#modal-add-chamado').classList.remove('show');
     navigate('sac');
   });
@@ -2873,6 +2883,12 @@ const startApp = () => {
   // Sidebar user
   $('#sidebar-avatar').textContent = currentUser.charAt(0);
   $('#sidebar-name').textContent = currentUser;
+
+  // Expor globais para onclick inline (necessário em qualquer path de login)
+  window.openObra = openObra;
+  window.openChamado = openChamado;
+  window.closeSearch = closeSearch;
+  window.navigate = navigate;
 
   const timeout = setTimeout(() => {
     $('#loading-screen').style.display = 'none';
