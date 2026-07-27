@@ -882,6 +882,37 @@
   </div>
 </div>
 
+<!-- Modal Finalizar Visita -->
+<div class="modal-overlay" id="modal-finalizar-visita">
+  <div class="modal-box" style="max-width:620px">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-title" id="fv-obra-nome"></div>
+        <div class="modal-subtitle" id="fv-visita-info"></div>
+        <div class="modal-stage-badge" id="fv-stage"></div>
+      </div>
+      <button class="modal-close" id="fv-close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Checklist da etapa</div>
+      <div id="fv-checklist" style="margin-bottom:16px"></div>
+      <div class="separator"></div>
+      <div class="form-field" style="margin-top:14px">
+        <label style="font-size:12px;font-weight:600;color:var(--text2)">O que foi feito nesta visita</label>
+        <textarea id="fv-relatorio" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;resize:vertical;min-height:80px;outline:none;width:100%;margin-top:6px" placeholder="Descreva o que foi executado..."></textarea>
+      </div>
+      <div class="form-field" style="margin-top:10px">
+        <label style="font-size:12px;font-weight:600;color:var(--text2)">Próximo contato / visita</label>
+        <input type="date" id="fv-prox" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;margin-top:6px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" id="fv-cancel">Cancelar</button>
+      <button class="btn-sm btn-accent" id="fv-confirm"><i class="ti ti-circle-check"></i> Finalizar Visita</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Chamado -->
 <div class="modal-overlay" id="modal-chamado">
   <div class="modal-box">
@@ -954,6 +985,7 @@ let dragSrcStage = null;
 let dragSrcId = null;
 let pendingEquipsNovaObra = [];
 let calViewDate = new Date();
+let currentFinalizarVisita = null;
 
 // ===================== HELPERS =====================
 const $ = (s) => document.querySelector(s);
@@ -2451,6 +2483,52 @@ const importPDF = (obra, container) => {
   input.click();
 };
 
+// ===================== FINALIZAR VISITA =====================
+const openFinalizarVisita = (obra, contatoIdx) => {
+  const c = obra.contatos[contatoIdx];
+  currentFinalizarVisita = { obra, contatoIdx };
+
+  $('#fv-obra-nome').textContent = obra.name;
+  $('#fv-visita-info').textContent = `Visita: ${fmtDate(new Date(c.dataVisita + 'T00:00'))}${c.horaVisita ? ' às ' + c.horaVisita : ''}`;
+  $('#fv-stage').textContent = obra.stage;
+  $('#fv-relatorio').value = '';
+  $('#fv-prox').value = localDateStr(14);
+
+  const clContainer = $('#fv-checklist');
+  clContainer.innerHTML = '';
+  const clItems = getClItems(obra, obra.stage);
+  currentFinalizarVisita.clItems = clItems;
+
+  if (clItems.length === 0) {
+    clContainer.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nenhum item de checklist para esta etapa.</div>';
+  } else {
+    clItems.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)';
+      row.innerHTML = `
+        <div style="flex:1;font-size:12px;color:${item.inherited ? 'var(--amber)' : 'var(--text)'}">
+          ${item.inherited ? '<span style="font-size:10px;color:var(--amber);margin-right:4px">↑ ant.</span>' : ''}
+          ${item.name.replace(/^\[[^\]]+\]\s*(Instalar|Infraestrutura):\s*/i, '')}
+        </div>
+        <div style="display:flex;gap:3px">
+          <button class="cl-btn cl-btn-ok ${item.status === 'concluido' ? 'active' : ''}" data-s="concluido">✓</button>
+          <button class="cl-btn cl-btn-part ${item.status === 'parcial' ? 'active' : ''}" data-s="parcial">~</button>
+          <button class="cl-btn cl-btn-pend ${item.status === 'pendente' ? 'active' : ''}" data-s="pendente">✗</button>
+        </div>
+      `;
+      row.querySelectorAll('.cl-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          clItems[idx].status = btn.dataset.s;
+          row.querySelectorAll('.cl-btn').forEach(b => b.classList.toggle('active', b.dataset.s === btn.dataset.s));
+        });
+      });
+      clContainer.appendChild(row);
+    });
+  }
+
+  $('#modal-finalizar-visita').classList.add('show');
+};
+
 // ===================== AGENDAR VISITA =====================
 const openAgendarVisita = (dateStr) => {
   const sel = $('#av-obra');
@@ -2523,9 +2601,9 @@ const renderAgenda = () => {
   // Coletar visitas de todos os contatos de todas as obras
   const visits = [];
   obras.forEach(o => {
-    (o.contatos || []).forEach(c => {
+    (o.contatos || []).forEach((c, cIdx) => {
       if (c.tipo === 'visita' && c.dataVisita) {
-        visits.push({ obra: o, data: c.dataVisita, hora: c.horaVisita || '', msg: c.msg || '' });
+        visits.push({ obra: o, data: c.dataVisita, hora: c.horaVisita || '', msg: c.msg || '', idx: cIdx, realizada: c.realizada || false });
       }
     });
   });
@@ -2594,10 +2672,26 @@ const renderAgenda = () => {
 
       dayVisits.forEach(v => {
         const ev = document.createElement('div');
-        ev.className = 'cal-event ' + ((v.obra.tipo || 'home') === 'corp' ? 'cal-event-corp' : 'cal-event-home');
-        ev.title = `${v.hora ? v.hora + ' — ' : ''}${v.obra.name}: ${v.msg}`;
-        ev.textContent = (v.hora ? v.hora + ' ' : '') + v.obra.name;
-        ev.addEventListener('click', () => openObra(v.obra.id));
+        const isCorp = (v.obra.tipo || 'home') === 'corp';
+        const visitDate = new Date(v.data + 'T00:00'); visitDate.setHours(0,0,0,0);
+        const isPast = visitDate <= today;
+        ev.className = 'cal-event ' + (isCorp ? 'cal-event-corp' : 'cal-event-home');
+        if (v.realizada) {
+          ev.style.opacity = '0.5';
+          ev.style.textDecoration = 'line-through';
+          ev.title = `✓ Realizada — ${v.obra.name}`;
+          ev.textContent = '✓ ' + (v.hora ? v.hora + ' ' : '') + v.obra.name;
+          ev.addEventListener('click', (e) => { e.stopPropagation(); openObra(v.obra.id); });
+        } else if (isPast) {
+          ev.style.borderLeft = '2px solid var(--amber)';
+          ev.title = `⚠ Pendente — clique para finalizar\n${v.obra.name}: ${v.msg}`;
+          ev.textContent = '⚠ ' + (v.hora ? v.hora + ' ' : '') + v.obra.name;
+          ev.addEventListener('click', (e) => { e.stopPropagation(); openFinalizarVisita(v.obra, v.idx); });
+        } else {
+          ev.title = `${v.hora ? v.hora + ' — ' : ''}${v.obra.name}: ${v.msg}`;
+          ev.textContent = (v.hora ? v.hora + ' ' : '') + v.obra.name;
+          ev.addEventListener('click', (e) => { e.stopPropagation(); openObra(v.obra.id); });
+        }
         cell.appendChild(ev);
       });
 
@@ -3109,6 +3203,38 @@ const bindEvents = () => {
     btn.disabled = false;
     $('#modal-add-chamado').classList.remove('show');
     navigate('sac');
+  });
+
+  // Modal Finalizar Visita
+  $('#fv-close').addEventListener('click', () => $('#modal-finalizar-visita').classList.remove('show'));
+  $('#fv-cancel').addEventListener('click', () => $('#modal-finalizar-visita').classList.remove('show'));
+  $('#modal-finalizar-visita').addEventListener('click', (e) => { if (e.target === $('#modal-finalizar-visita')) $('#modal-finalizar-visita').classList.remove('show'); });
+  $('#fv-confirm').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (btn.disabled) return;
+    const relatorio = $('#fv-relatorio').value.trim();
+    const prox = $('#fv-prox').value;
+    if (!relatorio) return alert('Descreva o que foi feito na visita.');
+    const { obra, contatoIdx, clItems } = currentFinalizarVisita;
+    btn.disabled = true;
+    // Marcar visita como realizada
+    obra.contatos[contatoIdx].realizada = true;
+    obra.contatos[contatoIdx].relatorio = relatorio;
+    // Próximo contato
+    if (prox) {
+      obra.contatos.push({ quem: currentUser, dt: new Date().toISOString(), nomeContato: '', telefone: '', msg: `Acompanhamento pós-visita: ${relatorio}`, prox, tipo: 'remoto', dataVisita: '', horaVisita: '' });
+      obra.proximoContato = prox;
+    }
+    // Histórico
+    if (!obra.hist) obra.hist = [];
+    obra.hist.push({ msg: `Visita realizada: ${relatorio}`, user: currentUser, dt: new Date().toISOString() });
+    // Salva checklist + obra (saveClToObra chama saveObra internamente)
+    await saveClToObra(obra, clItems);
+    await addLog(`[${obra.name}] Visita realizada: ${relatorio}`, obra.id);
+    btn.disabled = false;
+    $('#modal-finalizar-visita').classList.remove('show');
+    showToast('Visita finalizada!', 'green');
+    renderAgenda();
   });
 
   // Modal Agendar Visita
