@@ -696,13 +696,14 @@
     </div>
     <div class="modal-body" id="modal-body"></div>
     <div class="modal-footer">
-      <div style="display:flex;align-items:center;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:12px;color:var(--text3)">Responsável:</span>
           <select id="mo-resp-select" style="background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:3px 6px;font-family:inherit;outline:none;cursor:pointer">
             <option>Jefferson</option><option>Miguel</option><option>Victoria</option><option>Daniel</option><option>Guilherme</option><option>Aline</option>
           </select>
         </div>
+        <button class="btn-sm" id="btn-mover-tipo" style="font-size:12px;padding:5px 10px"></button>
         <button class="btn-sm btn-red" id="btn-del-obra" style="font-size:12px;padding:5px 10px"><i class="ti ti-trash"></i> Excluir</button>
       </div>
       <div style="display:flex;gap:8px">
@@ -1577,6 +1578,22 @@ const renderModalObra = () => {
       };
       inp.addEventListener('blur', save);
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = current; inp.blur(); } });
+    };
+  }
+
+  // Botão mover tipo (Home ↔ Corp)
+  const btnMoverTipo = $('#btn-mover-tipo');
+  if (btnMoverTipo) {
+    const isCorp = (obra.tipo || 'home') === 'corp';
+    btnMoverTipo.innerHTML = isCorp
+      ? '<i class="ti ti-home"></i> Mover para Home'
+      : '<i class="ti ti-building"></i> Mover para Corp';
+    btnMoverTipo.onclick = async () => {
+      obra.tipo = isCorp ? 'home' : 'corp';
+      await saveObra(obra);
+      await addLog(`Obra "${obra.name}" movida para SLight ${obra.tipo === 'corp' ? 'Corp' : 'Home'}`, obra.id);
+      renderModalObra();
+      renderKanban();
     };
   }
 
@@ -2587,6 +2604,7 @@ const openChamado = (id) => {
 
   // Footer buttons
   const footerBtns = $('#mc-footer-btns');
+  const isChamadoCorp = (c.tipo || 'home') === 'corp';
   footerBtns.innerHTML = `
     <select id="mc-status-select" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-size:13px;outline:none">
       <option value="aberto" ${c.status === 'aberto' ? 'selected' : ''}>Aberto</option>
@@ -2594,6 +2612,7 @@ const openChamado = (id) => {
       <option value="resolvido" ${c.status === 'resolvido' ? 'selected' : ''}>Resolvido</option>
     </select>
     <button class="btn-sm btn-accent" id="mc-save-status"><i class="ti ti-device-floppy"></i> Salvar Status</button>
+    <button class="btn-sm" id="mc-mover-tipo-chamado"><i class="ti ${isChamadoCorp ? 'ti-home' : 'ti-building'}"></i> Mover para ${isChamadoCorp ? 'Home' : 'Corp'}</button>
     <button class="btn-sm" id="mc-del-chamado" style="background:var(--bg4);color:var(--red);border:1px solid var(--red);margin-left:auto"><i class="ti ti-trash"></i> Excluir</button>
   `;
 
@@ -2601,6 +2620,13 @@ const openChamado = (id) => {
     const newStatus = footerBtns.querySelector('#mc-status-select').value;
     c.status = newStatus;
     await db.collection('chamados').doc(c.id).set({ status: newStatus }, { merge: true });
+    openChamado(id);
+    renderSAC();
+  });
+
+  footerBtns.querySelector('#mc-mover-tipo-chamado').addEventListener('click', async () => {
+    c.tipo = isChamadoCorp ? 'home' : 'corp';
+    await db.collection('chamados').doc(c.id).set({ tipo: c.tipo }, { merge: true });
     openChamado(id);
     renderSAC();
   });
