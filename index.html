@@ -2884,9 +2884,13 @@ const renderAgenda = () => {
   title1.innerHTML = '<i class="ti ti-phone"></i> Próximos Contatos';
   sec1.appendChild(title1);
 
+  const _hoje = new Date(); _hoje.setHours(0,0,0,0);
+  const _amanha = new Date(_hoje); _amanha.setDate(_amanha.getDate() + 1);
+  const _depoisAmanha = new Date(_hoje); _depoisAmanha.setDate(_depoisAmanha.getDate() + 2);
   const contItems = obras
     .filter(o => o.proximoContato)
     .map(o => ({ obra: o, dt: new Date(o.proximoContato) }))
+    .filter(it => { const d = new Date(it.dt); d.setHours(0,0,0,0); return d < _depoisAmanha; })
     .sort((a, b) => a.dt - b.dt);
 
   if (contItems.length === 0) {
