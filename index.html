@@ -87,7 +87,15 @@
   .nav-item:hover { background:var(--bg3); color:var(--text); }
   .nav-item.active { background:var(--bg3); color:var(--accent); border-left-color:var(--accent); }
   .nav-item i { font-size:18px; }
+  .nav-badge { width:8px; height:8px; border-radius:50%; background:var(--red); flex-shrink:0; margin-left:auto; }
   .sidebar-spacer { flex:1; }
+  #daily-banner {
+    display:none; align-items:center; gap:10px; margin-bottom:16px;
+    padding:10px 14px; background:var(--bg2); border:1px solid var(--border);
+    border-left:3px solid var(--accent); border-radius:var(--r);
+    font-size:13px; color:var(--text2); flex-shrink:0;
+  }
+  #daily-banner .db-close { margin-left:auto; background:none; border:none; color:var(--text3); cursor:pointer; font-size:16px; line-height:1; padding:2px 4px; }
 
   #main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
   #topbar {
@@ -547,6 +555,7 @@
     </div>
     <div class="nav-item" data-page="agenda">
       <i class="ti ti-calendar"></i> Agenda
+      <span id="agenda-badge" class="nav-badge" style="display:none"></span>
     </div>
     <div class="nav-item" data-page="historico">
       <i class="ti ti-history"></i> Histórico
@@ -566,6 +575,13 @@
       </div>
     </div>
     <div id="content">
+
+      <!-- Banner do dia -->
+      <div id="daily-banner">
+        <i class="ti ti-bell" style="color:var(--accent);font-size:16px;flex-shrink:0"></i>
+        <span id="daily-banner-text"></span>
+        <button class="db-close" id="daily-banner-close" title="Fechar"><i class="ti ti-x"></i></button>
+      </div>
 
       <!-- DASHBOARD -->
       <div id="page-dashboard" class="page active">
@@ -1296,12 +1312,58 @@ const navigate = (page, tipo) => {
   if (page === 'sac') renderSAC();
 };
 
+// ===================== ALERTAS DO DIA =====================
+const updateDailyAlerts = () => {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const todayStr = today.toISOString().slice(0,10);
+
+  let visitasHoje = 0;
+  let visitasAtrasadas = 0;
+  obras.forEach(o => {
+    (o.contatos || []).forEach(c => {
+      if (c.tipo === 'visita' && c.dataVisita && !c.realizada) {
+        if (c.dataVisita === todayStr) visitasHoje++;
+        else if (c.dataVisita < todayStr) visitasAtrasadas++;
+      }
+    });
+  });
+
+  const contatosAtrasados = obras.filter(o => {
+    if (!o.proximoContato) return false;
+    const dt = new Date(o.proximoContato);
+    dt.setHours(0,0,0,0);
+    return dt < today;
+  }).length;
+
+  const badge = $('#agenda-badge');
+  if (badge) badge.style.display = (visitasHoje > 0 || visitasAtrasadas > 0) ? 'block' : 'none';
+
+  const banner = $('#daily-banner');
+  const bannerText = $('#daily-banner-text');
+  if (!banner || !bannerText) return;
+
+  const parts = [];
+  if (visitasHoje > 0) parts.push(`<strong style="color:var(--text)">${visitasHoje} visita${visitasHoje > 1 ? 's' : ''} hoje</strong>`);
+  if (visitasAtrasadas > 0) parts.push(`<span style="color:var(--amber)">${visitasAtrasadas} visita${visitasAtrasadas > 1 ? 's' : ''} em atraso</span>`);
+  if (contatosAtrasados > 0) parts.push(`<span style="color:var(--red)">${contatosAtrasados} contato${contatosAtrasados > 1 ? 's' : ''} em atraso</span>`);
+
+  if (parts.length > 0 && !banner.dataset.dismissed) {
+    banner.style.display = 'flex';
+    bannerText.innerHTML = parts.join(' · ');
+  } else if (parts.length === 0) {
+    banner.style.display = 'none';
+    delete banner.dataset.dismissed;
+  }
+};
+
 // ===================== REFRESH =====================
 const refreshAll = () => {
   renderDash();
   const activeKanban = $('#page-kanban').classList.contains('active');
   if (activeKanban) renderKanban();
   renderAgenda();
+  updateDailyAlerts();
 };
 
 // ===================== DASHBOARD =====================
@@ -3273,6 +3335,13 @@ const bindEvents = () => {
     btn.disabled = false;
     $('#modal-add-chamado').classList.remove('show');
     navigate('sac');
+  });
+
+  // Banner do dia
+  $('#daily-banner-close').addEventListener('click', () => {
+    const banner = $('#daily-banner');
+    banner.style.display = 'none';
+    banner.dataset.dismissed = '1';
   });
 
   // Modal Finalizar Visita
