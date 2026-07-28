@@ -2651,11 +2651,17 @@ const parseSLightPDF = async (file) => {
     });
   }
 
+  let valorTotal = 0;
   allLines.forEach(({ text }) => {
     const pm = text.match(new RegExp('PROPOSTA[:\\s]+(\\d+)', 'i'));
     if (pm) proposta = pm[1];
     const cm = text.match(new RegExp('Cliente:\\s*(.+)', 'i'));
     if (cm) cliente = cm[1].trim();
+    const vm = text.match(new RegExp('(?:TOTAL|VALOR\\s+TOTAL)[^\\d]*R?\\$?[\\s]*(\\d[\\d.]*(?:,\\d{2})?)', 'i'));
+    if (vm) {
+      const v = parseFloat(vm[1].replace(/\./g, '').replace(',', '.'));
+      if (!isNaN(v) && v > valorTotal) valorTotal = v;
+    }
   });
 
   const markers = [];
@@ -2688,7 +2694,7 @@ const parseSLightPDF = async (file) => {
     else { itemsMap[key] = { nome, qtd, cat, ehCabo, unidade: ehCabo ? 'm' : 'un' }; }
   });
 
-  return { proposta, cliente, equips: Object.values(itemsMap) };
+  return { proposta, cliente, equips: Object.values(itemsMap), valorTotal };
 };
 
 // ===================== IMPORT PDF (dentro da obra) =====================
@@ -3923,6 +3929,7 @@ const bindEvents = () => {
       try {
         const result = await parseSLightPDF(file);
         if (result.cliente) $('#nl-nome').value = result.cliente;
+        if (result.valorTotal) $('#nl-valor').value = result.valorTotal;
         if (result.proposta) {
           const desc = $('#nl-desc');
           desc.value = `Proposta #${result.proposta}${result.equips.length ? ' · ' + result.equips.length + ' itens' : ''}`;
@@ -3930,6 +3937,7 @@ const bindEvents = () => {
         let msg = '';
         if (result.cliente) msg += `Cliente: ${result.cliente}`;
         if (result.proposta) msg += (msg ? ' · ' : '') + `Proposta: #${result.proposta}`;
+        if (result.valorTotal) msg += (msg ? ' · ' : '') + `R$ ${result.valorTotal.toLocaleString('pt-BR')}`;
         statusEl.textContent = msg || 'PDF processado.';
         statusEl.style.color = 'var(--green)';
       } catch(e) {
