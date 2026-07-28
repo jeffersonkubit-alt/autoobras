@@ -1916,6 +1916,8 @@ const renderModalObra = () => {
       ? '<i class="ti ti-home"></i> Mover para Home'
       : '<i class="ti ti-building"></i> Mover para Corp';
     btnMoverTipo.onclick = async () => {
+      const destino = isCorp ? 'SLight Home' : 'SLight Corp';
+      if (!confirm(`Mover a obra "${obra.name}" para ${destino}?`)) return;
       obra.tipo = isCorp ? 'home' : 'corp';
       await saveObra(obra);
       await addLog(`Obra "${obra.name}" movida para SLight ${obra.tipo === 'corp' ? 'Corp' : 'Home'}`, obra.id);
@@ -3260,6 +3262,8 @@ const openLead = (id) => {
   };
 
   $('#ml-mover-tipo').onclick = async () => {
+    const destinoLead = (lead.tipo || 'home') === 'corp' ? 'SLight Home' : 'SLight Corp';
+    if (!confirm(`Mover o lead "${lead.nome}" para ${destinoLead}?`)) return;
     lead.tipo = (lead.tipo || 'home') === 'corp' ? 'home' : 'corp';
     await db.collection('crm').doc(lead.id).set({ tipo: lead.tipo }, { merge: true });
     $('#modal-lead').classList.remove('show');
@@ -3533,6 +3537,8 @@ const openChamado = (id) => {
   });
 
   footerBtns.querySelector('#mc-mover-tipo-chamado').addEventListener('click', async () => {
+    const destinoChamado = isChamadoCorp ? 'SLight Home' : 'SLight Corp';
+    if (!confirm(`Mover o chamado de "${c.cliente}" para ${destinoChamado}?`)) return;
     c.tipo = isChamadoCorp ? 'home' : 'corp';
     await db.collection('chamados').doc(c.id).set({ tipo: c.tipo }, { merge: true });
     openChamado(id);
