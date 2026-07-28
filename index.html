@@ -478,6 +478,21 @@
   .sm-footer { padding:12px 20px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
 
   .ia-panel { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); padding:16px; }
+
+  /* Searchable select */
+  .ss-wrap { position:relative; }
+  .ss-input-row { display:flex; align-items:center; background:var(--bg4); border:1px solid var(--border); border-radius:8px; padding:0 10px; gap:6px; cursor:text; }
+  .ss-input-row:focus-within { border-color:var(--accent); }
+  .ss-input-row i { color:var(--text2); font-size:14px; flex-shrink:0; }
+  .ss-input-row input { flex:1; background:none; border:none; outline:none; color:var(--text); font-size:13px; padding:8px 0; }
+  .ss-clear { color:var(--text2); cursor:pointer; font-size:18px; line-height:1; padding:0 2px; user-select:none; }
+  .ss-clear:hover { color:var(--text); }
+  .ss-dropdown { position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--bg3); border:1px solid var(--border); border-radius:8px; max-height:220px; overflow-y:auto; z-index:2000; box-shadow:0 4px 20px #0005; display:none; }
+  .ss-dropdown.open { display:block; }
+  .ss-option { padding:8px 12px; cursor:pointer; font-size:13px; color:var(--text); }
+  .ss-option:hover { background:var(--bg4); }
+  .ss-option.ss-sel { background:var(--accent); color:#fff; font-weight:600; }
+  .ss-empty { padding:10px 12px; font-size:13px; color:var(--text2); text-align:center; }
   .ia-section { margin-bottom:14px; }
   .ia-section-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text3); margin-bottom:6px; }
   .ia-text { font-size:13px; color:var(--text); line-height:1.6; }
@@ -930,7 +945,15 @@
       </div>
       <div class="form-field">
         <label>Obra</label>
-        <select id="av-obra"></select>
+        <div class="ss-wrap" id="av-obra-wrap">
+          <div class="ss-input-row" id="av-obra-row">
+            <i class="ti ti-search"></i>
+            <input type="text" id="av-obra-search" placeholder="Buscar obra..." autocomplete="off">
+            <span class="ss-clear" id="av-obra-clear" style="display:none">×</span>
+          </div>
+          <div class="ss-dropdown" id="av-obra-dropdown"></div>
+          <input type="hidden" id="av-obra">
+        </div>
       </div>
       <div class="form-field">
         <label>Responsável</label>
@@ -2857,13 +2880,42 @@ const openFinalizarVisita = (obra, contatoIdx) => {
 };
 
 // ===================== AGENDAR VISITA =====================
+let _avObraList = [];
+
+const _avRenderDropdown = (q = '') => {
+  const dd = $('#av-obra-dropdown');
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? _avObraList.filter(o => o.label.toLowerCase().includes(term))
+    : _avObraList;
+  if (!filtered.length) {
+    dd.innerHTML = '<div class="ss-empty">Nenhuma obra encontrada</div>';
+  } else {
+    const cur = $('#av-obra').value;
+    dd.innerHTML = filtered.map(o =>
+      `<div class="ss-option${o.id === cur ? ' ss-sel' : ''}" data-id="${o.id}" data-label="${o.label}">${o.label}</div>`
+    ).join('');
+    dd.querySelectorAll('.ss-option').forEach(el => {
+      el.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        $('#av-obra').value = el.dataset.id;
+        $('#av-obra-search').value = el.dataset.label;
+        $('#av-obra-clear').style.display = 'block';
+        dd.classList.remove('open');
+      });
+    });
+  }
+};
+
 const openAgendarVisita = (dateStr) => {
-  const sel = $('#av-obra');
-  sel.innerHTML = obras
+  _avObraList = obras
     .filter(o => o.stage !== 'Obra entregue')
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map(o => `<option value="${o.id}">[${(o.tipo||'home') === 'corp' ? 'Corp' : 'Home'}] ${o.name} — ${o.stage}</option>`)
-    .join('');
+    .map(o => ({ id: o.id, label: `[${(o.tipo||'home')==='corp'?'Corp':'Home'}] ${o.name} — ${o.stage}` }));
+  $('#av-obra').value = '';
+  $('#av-obra-search').value = '';
+  $('#av-obra-clear').style.display = 'none';
+  $('#av-obra-dropdown').classList.remove('open');
   $('#av-data').value = dateStr;
   $('#av-resp').value = currentUser;
   $('#av-msg').value = '';
@@ -3881,6 +3933,30 @@ const bindEvents = () => {
   $('#av-close').addEventListener('click', () => $('#modal-agendar-visita').classList.remove('show'));
   $('#av-cancel').addEventListener('click', () => $('#modal-agendar-visita').classList.remove('show'));
   $('#modal-agendar-visita').addEventListener('click', (e) => { if (e.target === $('#modal-agendar-visita')) $('#modal-agendar-visita').classList.remove('show'); });
+
+  // Searchable obra select
+  $('#av-obra-search').addEventListener('focus', () => {
+    _avRenderDropdown($('#av-obra-search').value);
+    $('#av-obra-dropdown').classList.add('open');
+  });
+  $('#av-obra-search').addEventListener('input', (e) => {
+    $('#av-obra').value = '';
+    $('#av-obra-clear').style.display = e.target.value ? 'block' : 'none';
+    _avRenderDropdown(e.target.value);
+    $('#av-obra-dropdown').classList.add('open');
+  });
+  $('#av-obra-clear').addEventListener('click', () => {
+    $('#av-obra').value = '';
+    $('#av-obra-search').value = '';
+    $('#av-obra-clear').style.display = 'none';
+    $('#av-obra-dropdown').classList.remove('open');
+    $('#av-obra-search').focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!$('#av-obra-wrap').contains(e.target)) {
+      $('#av-obra-dropdown').classList.remove('open');
+    }
+  });
   $('#av-confirm').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     if (btn.disabled) return;
