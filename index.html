@@ -991,6 +991,19 @@
       <button class="modal-close" id="add-lead-close"><i class="ti ti-x"></i></button>
     </div>
     <div style="padding:14px 20px 0">
+      <div style="background:var(--bg3);border:1px dashed var(--border2);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <i class="ti ti-file-type-pdf" style="font-size:26px;color:var(--red);flex-shrink:0"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">Preencher via proposta PDF</div>
+          <div id="nl-pdf-status" style="font-size:11px;color:var(--text3);margin-top:2px">Extrai cliente e nº de proposta automaticamente</div>
+        </div>
+        <button class="btn-sm" id="nl-from-pdf"><i class="ti ti-upload"></i> Selecionar PDF</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;color:var(--text3)">ou preencher manualmente</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
       <div class="form-row">
         <div class="form-field">
           <label>Nome / Empresa</label>
@@ -3896,6 +3909,35 @@ const bindEvents = () => {
     $('#nl-desc').value = '';
     document.querySelector('input[name="nl-tipo"][value="' + currentCrmTipo + '"]').checked = true;
     $('#modal-add-lead').classList.add('show');
+  });
+  $('#nl-from-pdf').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      const statusEl = $('#nl-pdf-status');
+      statusEl.textContent = 'Lendo PDF...';
+      statusEl.style.color = 'var(--amber)';
+      try {
+        const result = await parseSLightPDF(file);
+        if (result.cliente) $('#nl-nome').value = result.cliente;
+        if (result.proposta) {
+          const desc = $('#nl-desc');
+          desc.value = `Proposta #${result.proposta}${result.equips.length ? ' · ' + result.equips.length + ' itens' : ''}`;
+        }
+        let msg = '';
+        if (result.cliente) msg += `Cliente: ${result.cliente}`;
+        if (result.proposta) msg += (msg ? ' · ' : '') + `Proposta: #${result.proposta}`;
+        statusEl.textContent = msg || 'PDF processado.';
+        statusEl.style.color = 'var(--green)';
+      } catch(e) {
+        statusEl.textContent = 'Erro: ' + e.message;
+        statusEl.style.color = 'var(--red)';
+      }
+    };
+    input.click();
   });
   $('#add-lead-close').addEventListener('click', () => $('#modal-add-lead').classList.remove('show'));
   $('#add-lead-cancel').addEventListener('click', () => $('#modal-add-lead').classList.remove('show'));
