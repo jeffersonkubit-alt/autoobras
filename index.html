@@ -539,6 +539,7 @@
   .cal-event:hover { opacity:0.75; }
   .cal-event-home { background:rgba(79,142,247,0.15);color:var(--accent); }
   .cal-event-corp { background:rgba(167,139,250,0.15);color:var(--purple); }
+  .cal-event-sac  { background:rgba(245,158,11,0.15);color:var(--amber); }
   .tipo-badge { font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;flex-shrink:0; }
   .tipo-remoto { background:rgba(79,142,247,0.12);color:var(--accent); }
   .tipo-visita { background:rgba(62,207,142,0.12);color:var(--green); }
@@ -916,6 +917,36 @@
           <option>Guilherme</option>
           <option>Aline</option>
         </select>
+      </div>
+    </div>
+      <div class="form-field">
+        <div id="nc-agenda-box" style="border:1px dashed var(--border);border-radius:var(--r);padding:12px;cursor:pointer" onclick="toggleNcAgenda()">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text2)">
+              <i class="ti ti-calendar-plus" id="nc-agenda-icon"></i>
+              Agendar visita técnica
+            </div>
+            <div id="nc-agenda-toggle" style="width:36px;height:20px;border-radius:10px;background:var(--border);position:relative;transition:.2s;flex-shrink:0">
+              <div style="position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.2s" id="nc-agenda-thumb"></div>
+            </div>
+          </div>
+          <div id="nc-agenda-fields" style="display:none;margin-top:12px;display:none;flex-direction:column;gap:10px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="form-field" style="margin:0">
+                <label>Data</label>
+                <input type="date" id="nc-agenda-data">
+              </div>
+              <div class="form-field" style="margin:0">
+                <label>Hora</label>
+                <input type="time" id="nc-agenda-hora" value="09:00">
+              </div>
+            </div>
+            <div class="form-field" style="margin:0">
+              <label>Descrição da visita</label>
+              <input type="text" id="nc-agenda-desc" placeholder="O que será feito...">
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="sm-footer">
@@ -2986,9 +3017,15 @@ const renderAgenda = () => {
   obras.forEach(o => {
     (o.contatos || []).forEach((c, cIdx) => {
       if (c.tipo === 'visita' && c.dataVisita) {
-        visits.push({ obra: o, data: c.dataVisita, hora: c.horaVisita || '', msg: c.msg || '', idx: cIdx, realizada: c.realizada || false });
+        visits.push({ obra: o, data: c.dataVisita, hora: c.horaVisita || '', msg: c.msg || '', idx: cIdx, realizada: c.realizada || false, isSac: false });
       }
     });
+  });
+  // Coletar visitas agendadas a partir de chamados SAC
+  chamados.forEach(c => {
+    if (c.agendaVisita && c.agendaVisita.data) {
+      visits.push({ chamado: c, data: c.agendaVisita.data, hora: c.agendaVisita.hora || '', msg: c.agendaVisita.desc || c.problema || '', realizada: c.agendaVisita.realizada || false, isSac: true });
+    }
   });
 
   const calWrap = document.createElement('div');
@@ -3055,25 +3092,41 @@ const renderAgenda = () => {
 
       dayVisits.forEach(v => {
         const ev = document.createElement('div');
-        const isCorp = (v.obra.tipo || 'home') === 'corp';
         const visitDate = new Date(v.data + 'T00:00'); visitDate.setHours(0,0,0,0);
         const isPast = visitDate <= today;
-        ev.className = 'cal-event ' + (isCorp ? 'cal-event-corp' : 'cal-event-home');
-        if (v.realizada) {
-          ev.style.opacity = '0.5';
-          ev.style.textDecoration = 'line-through';
-          ev.title = `✓ Realizada — ${v.obra.name}`;
-          ev.textContent = '✓ ' + (v.hora ? v.hora + ' ' : '') + v.obra.name;
-          ev.addEventListener('click', (e) => { e.stopPropagation(); openObra(v.obra.id); });
-        } else if (isPast) {
-          ev.style.borderLeft = '2px solid var(--amber)';
-          ev.title = `⚠ Pendente — clique para finalizar\n${v.obra.name}: ${v.msg}`;
-          ev.textContent = '⚠ ' + (v.hora ? v.hora + ' ' : '') + v.obra.name;
-          ev.addEventListener('click', (e) => { e.stopPropagation(); openFinalizarVisita(v.obra, v.idx); });
+        if (v.isSac) {
+          ev.className = 'cal-event cal-event-sac';
+          const label = (v.hora ? v.hora + ' ' : '') + 'SAC — ' + (v.chamado.cliente || '');
+          if (v.realizada) {
+            ev.style.opacity = '0.5'; ev.style.textDecoration = 'line-through';
+            ev.textContent = '✓ ' + label;
+          } else if (isPast) {
+            ev.style.borderLeft = '2px solid var(--amber)';
+            ev.textContent = '⚠ ' + label;
+          } else {
+            ev.textContent = label;
+          }
+          ev.title = `SAC — ${v.chamado.cliente}: ${v.msg}`;
+          ev.addEventListener('click', (e) => { e.stopPropagation(); openChamado(v.chamado.id); });
         } else {
-          ev.title = `${v.hora ? v.hora + ' — ' : ''}${v.obra.name}: ${v.msg}`;
-          ev.textContent = (v.hora ? v.hora + ' ' : '') + v.obra.name;
-          ev.addEventListener('click', (e) => { e.stopPropagation(); openObra(v.obra.id); });
+          const isCorp = (v.obra.tipo || 'home') === 'corp';
+          ev.className = 'cal-event ' + (isCorp ? 'cal-event-corp' : 'cal-event-home');
+          if (v.realizada) {
+            ev.style.opacity = '0.5';
+            ev.style.textDecoration = 'line-through';
+            ev.title = `✓ Realizada — ${v.obra.name}`;
+            ev.textContent = '✓ ' + (v.hora ? v.hora + ' ' : '') + v.obra.name;
+            ev.addEventListener('click', (e) => { e.stopPropagation(); openObra(v.obra.id); });
+          } else if (isPast) {
+            ev.style.borderLeft = '2px solid var(--amber)';
+            ev.title = `⚠ Pendente — clique para finalizar\n${v.obra.name}: ${v.msg}`;
+            ev.textContent = '⚠ ' + (v.hora ? v.hora + ' ' : '') + v.obra.name;
+            ev.addEventListener('click', (e) => { e.stopPropagation(); openFinalizarVisita(v.obra, v.idx); });
+          } else {
+            ev.title = `${v.hora ? v.hora + ' — ' : ''}${v.obra.name}: ${v.msg}`;
+            ev.textContent = (v.hora ? v.hora + ' ' : '') + v.obra.name;
+            ev.addEventListener('click', (e) => { e.stopPropagation(); openObra(v.obra.id); });
+          }
         }
         cell.appendChild(ev);
       });
@@ -3857,11 +3910,41 @@ const bindEvents = () => {
     navigate('kanban', currentKanbanTipo);
   });
 
+  // Toggle agendar visita no modal SAC
+  let _ncAgendaOn = false;
+  window.toggleNcAgenda = () => {
+    _ncAgendaOn = !_ncAgendaOn;
+    const box = $('#nc-agenda-box');
+    const tog = $('#nc-agenda-toggle');
+    const thumb = $('#nc-agenda-thumb');
+    const icon = $('#nc-agenda-icon');
+    const fields = $('#nc-agenda-fields');
+    if (_ncAgendaOn) {
+      box.style.border = '1px solid var(--accent)';
+      box.style.background = 'rgba(79,142,247,0.06)';
+      tog.style.background = 'var(--accent)';
+      thumb.style.left = '19px';
+      icon.style.color = 'var(--accent)';
+      fields.style.display = 'flex';
+    } else {
+      box.style.border = '1px dashed var(--border)';
+      box.style.background = '';
+      tog.style.background = 'var(--border)';
+      thumb.style.left = '3px';
+      icon.style.color = '';
+      fields.style.display = 'none';
+    }
+  };
+
   // SAC
   $('#btn-novo-chamado').addEventListener('click', () => {
     $('#nc-contato').value = '';
     $('#nc-telefone').value = '';
     $('#nc-problema').value = '';
+    $('#nc-agenda-data').value = '';
+    $('#nc-agenda-hora').value = '09:00';
+    $('#nc-agenda-desc').value = '';
+    if (_ncAgendaOn) toggleNcAgenda();
     $('#modal-add-chamado').classList.add('show');
   });
   $('#add-chamado-close').addEventListener('click', () => $('#modal-add-chamado').classList.remove('show'));
@@ -3878,13 +3961,23 @@ const bindEvents = () => {
     const tipo = tipoEl ? tipoEl.value : 'home';
     if (!cliente) return alert('Informe o cliente ou contato.');
     if (!problema) return alert('Descreva o problema.');
+    if (_ncAgendaOn && !$('#nc-agenda-data').value) return alert('Informe a data da visita.');
     btn.disabled = true;
     const id = genId();
-    await db.collection('chamados').doc(id).set({
+    const docData = {
       cliente, telefone, problema, tipo,
       status: 'aberto', abertura: new Date().toISOString(), resp, hist: [], cl: {}
-    });
-    await addLog(`Chamado SAC criado para "${cliente}": ${problema}`);
+    };
+    if (_ncAgendaOn) {
+      docData.agendaVisita = {
+        data: $('#nc-agenda-data').value,
+        hora: $('#nc-agenda-hora').value,
+        desc: $('#nc-agenda-desc').value.trim() || problema,
+        realizada: false
+      };
+    }
+    await db.collection('chamados').doc(id).set(docData);
+    await addLog(`Chamado SAC criado para "${cliente}": ${problema}${_ncAgendaOn ? ` — visita agendada para ${$('#nc-agenda-data').value}` : ''}`);
     btn.disabled = false;
     $('#modal-add-chamado').classList.remove('show');
     navigate('sac');
