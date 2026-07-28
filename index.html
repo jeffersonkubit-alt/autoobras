@@ -2652,15 +2652,24 @@ const parseSLightPDF = async (file) => {
   }
 
   let valorTotal = 0;
-  allLines.forEach(({ text }) => {
+  const parseValorBR = (s) => parseFloat(s.replace(/\./g, '').replace(',', '.'));
+  allLines.forEach(({ text }, idx) => {
     const pm = text.match(new RegExp('PROPOSTA[:\\s]+(\\d+)', 'i'));
     if (pm) proposta = pm[1];
     const cm = text.match(new RegExp('Cliente:\\s*(.+)', 'i'));
     if (cm) cliente = cm[1].trim();
-    const vm = text.match(new RegExp('(?:TOTAL|VALOR\\s+TOTAL)[^\\d]*R?\\$?[\\s]*(\\d[\\d.]*(?:,\\d{2})?)', 'i'));
+    // valor na mesma linha que o label
+    const vm = text.match(new RegExp('(?:Total\\s+Geral|VALOR\\s+TOTAL|TOTAL)[^\\d]*R?\\$?\\s*([\\d.]+,\\d{2})', 'i'));
     if (vm) {
-      const v = parseFloat(vm[1].replace(/\./g, '').replace(',', '.'));
+      const v = parseValorBR(vm[1]);
       if (!isNaN(v) && v > valorTotal) valorTotal = v;
+    }
+    // label numa linha, valor na próxima (colunas separadas no PDF)
+    if (/Total\s+Geral/i.test(text)) {
+      for (let j = idx + 1; j < Math.min(idx + 4, allLines.length); j++) {
+        const nm = allLines[j].text.match(/R?\$?\s*([\d.]+,\d{2})/);
+        if (nm) { const v = parseValorBR(nm[1]); if (!isNaN(v) && v > valorTotal) valorTotal = v; break; }
+      }
     }
   });
 
