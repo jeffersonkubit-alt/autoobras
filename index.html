@@ -1371,10 +1371,11 @@ const getClItems = (obra, stage) => {
           const matchBase = base.find(b => b.name.endsWith(': ' + s.name) || b.name.endsWith(s.name));
           if (matchBase) {
             items.push({ ...matchBase, status: s.status, obs: s.obs || '', qtdReal: s.qtdReal || '', inherited: false });
-          } else {
-            // Item dinâmico (cabo, equipamento) — pertence à etapa atual
+          } else if (s.name.startsWith('[')) {
+            // Item dinâmico (cabo, equipamento) — começa com [Categoria]
             items.push({ ...s, inherited: false });
           }
+          // Item de CL_BASE antigo que foi removido — descarta silenciosamente
         }
       }
     });
