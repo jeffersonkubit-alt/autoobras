@@ -406,6 +406,38 @@
   .status-resolvido { background:rgba(62,207,142,0.15); color:var(--green); }
   .chamado-problema { font-size:12px; color:var(--text2); }
   .chamado-meta { font-size:11px; color:var(--text3); margin-top:6px; font-family:'DM Mono',monospace; }
+
+  /* CRM */
+  #page-crm.active { display:flex !important; flex-direction:column; }
+  .crm-tipo-tabs { display:flex; gap:6px; }
+  .crm-tipo-tab { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); padding:5px 14px; font-size:12px; font-weight:600; cursor:pointer; color:var(--text2); transition:all 0.15s; }
+  .crm-tipo-tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .crm-analytics-strip { display:flex; gap:10px; flex-wrap:wrap; padding:10px 20px; border-bottom:1px solid var(--border); flex-shrink:0; }
+  .crm-an-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); padding:8px 14px; min-width:110px; }
+  .crm-an-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:3px; }
+  .crm-an-value { font-size:18px; font-weight:700; color:var(--text); }
+  .crm-an-sub { font-size:11px; color:var(--text3); margin-top:2px; }
+  .crm-wrap { flex:1; overflow-x:auto; overflow-y:hidden; padding:14px 16px; min-height:0; }
+  .crm-board { display:flex; gap:8px; align-items:flex-start; height:100%; }
+  .crm-col { flex:0 0 200px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); display:flex; flex-direction:column; max-height:calc(100vh - 210px); overflow:hidden; }
+  .crm-col.drag-over { border-color:var(--accent); background:var(--bg3); }
+  .crm-col-header { padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
+  .crm-col-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:4px; }
+  .crm-col-valor { font-size:12px; font-weight:600; color:var(--text2); font-family:'DM Mono',monospace; }
+  .crm-col-count { font-size:11px; color:var(--text3); margin-top:2px; }
+  .crm-cards { padding:8px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:6px; min-height:60px; }
+  .crm-card { background:var(--bg3); border:1px solid var(--border); border-radius:var(--r); padding:10px 12px; cursor:pointer; transition:border-color 0.15s; user-select:none; }
+  .crm-card:hover { border-color:var(--border2); }
+  .crm-card.dragging { opacity:0.4; border-color:var(--accent); }
+  .crm-card-nome { font-size:13px; font-weight:600; color:var(--text); margin-bottom:5px; }
+  .crm-card-valor { font-size:12px; color:var(--green); font-family:'DM Mono',monospace; margin-bottom:4px; }
+  .crm-card-meta { font-size:11px; color:var(--text3); }
+  .crm-origem-badge { display:inline-block; font-size:10px; font-weight:600; padding:2px 7px; border-radius:5px; margin-bottom:5px; }
+  .crm-origem-indicacao-arquiteto { background:rgba(167,139,250,0.15); color:var(--purple); }
+  .crm-origem-indicacao-cliente { background:rgba(79,142,247,0.15); color:var(--accent); }
+  .crm-origem-instagram { background:rgba(245,101,101,0.15); color:var(--red); }
+  .crm-origem-google { background:rgba(62,207,142,0.15); color:var(--green); }
+
   .filter-tabs { display:flex; gap:4px; margin-bottom:16px; }
   .filter-tab {
     padding:6px 14px; border-radius:20px; font-size:13px; font-weight:500;
@@ -557,6 +589,9 @@
       <i class="ti ti-calendar"></i> Agenda
       <span id="agenda-badge" class="nav-badge" style="display:none"></span>
     </div>
+    <div class="nav-item" data-page="crm">
+      <i class="ti ti-trending-up"></i> CRM
+    </div>
     <div class="nav-item" data-page="historico">
       <i class="ti ti-history"></i> Histórico
     </div>
@@ -703,6 +738,24 @@
               <div class="sac-col-body" id="sac-body-corp-resolvido"></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- CRM -->
+      <div id="page-crm" class="page" style="flex-direction:column;overflow:hidden">
+        <div class="section-header" style="flex-shrink:0">
+          <div class="section-title">CRM — Comercial</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="crm-tipo-tabs">
+              <button class="crm-tipo-tab active" data-crm-tipo="home"><i class="ti ti-home"></i> Home</button>
+              <button class="crm-tipo-tab" data-crm-tipo="corp"><i class="ti ti-building"></i> Corp</button>
+            </div>
+            <button class="btn-sm btn-accent" id="btn-novo-lead"><i class="ti ti-plus"></i> Novo Lead</button>
+          </div>
+        </div>
+        <div class="crm-analytics-strip" id="crm-analytics"></div>
+        <div class="crm-wrap">
+          <div class="crm-board" id="crm-board"></div>
         </div>
       </div>
 
@@ -930,6 +983,93 @@
   </div>
 </div>
 
+<!-- Modal Novo Lead -->
+<div class="modal-overlay" id="modal-add-lead">
+  <div class="small-modal-box" style="max-width:460px">
+    <div class="sm-header">
+      <h3><i class="ti ti-user-plus" style="color:var(--accent);margin-right:6px"></i>Novo Lead</h3>
+      <button class="modal-close" id="add-lead-close"><i class="ti ti-x"></i></button>
+    </div>
+    <div style="padding:14px 20px 0">
+      <div class="form-row">
+        <div class="form-field">
+          <label>Nome / Empresa</label>
+          <input type="text" id="nl-nome" placeholder="Ex: João Silva">
+        </div>
+        <div class="form-field">
+          <label>Telefone</label>
+          <input type="tel" id="nl-telefone" placeholder="(11) 99999-9999">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Valor estimado (R$)</label>
+          <input type="number" id="nl-valor" placeholder="0" min="0" step="100">
+        </div>
+        <div class="form-field">
+          <label>Responsável</label>
+          <select id="nl-resp">
+            <option>Jefferson</option><option>Miguel</option><option>Victoria</option><option>Daniel</option><option>Guilherme</option><option>Aline</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Tipo</label>
+        <div style="display:flex;gap:12px;margin-top:4px">
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nl-tipo" value="home" checked> Home</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="nl-tipo" value="corp"> Corp</label>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Origem</label>
+        <select id="nl-origem" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
+          <option value="indicacao-arquiteto">Indicação — Arquiteto/Parceiro</option>
+          <option value="indicacao-cliente">Indicação — Cliente</option>
+          <option value="instagram">Instagram</option>
+          <option value="google">Google/Site</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Descrição do projeto</label>
+        <textarea id="nl-desc" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;resize:vertical;min-height:70px;outline:none;width:100%" placeholder="Descreva brevemente o que o cliente precisa..."></textarea>
+      </div>
+    </div>
+    <div class="sm-footer">
+      <button class="btn-sm" id="add-lead-cancel">Cancelar</button>
+      <button class="btn-sm btn-accent" id="add-lead-confirm"><i class="ti ti-plus"></i> Criar Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Lead -->
+<div class="modal-overlay" id="modal-lead">
+  <div class="modal-box" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-header-info">
+        <div class="modal-title" id="ml-nome"></div>
+        <div class="modal-subtitle" id="ml-origem-sub"></div>
+        <div id="ml-stage-badge" class="modal-stage-badge" style="margin-top:6px"></div>
+      </div>
+      <button class="modal-close" id="ml-close"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-tabs">
+      <div class="modal-tab active" data-tab="ml-info"><i class="ti ti-info-circle"></i> Informações</div>
+      <div class="modal-tab" data-tab="ml-hist"><i class="ti ti-history"></i> Histórico</div>
+    </div>
+    <div class="modal-body" id="ml-body"></div>
+    <div class="modal-footer">
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-red" id="ml-del"><i class="ti ti-trash"></i> Excluir</button>
+        <button class="btn-sm" id="ml-mover-tipo"></button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm" id="ml-converter" style="display:none"><i class="ti ti-building-factory"></i> Converter em Obra</button>
+        <button class="btn-sm btn-accent" id="ml-save"><i class="ti ti-device-floppy"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Modal Chamado -->
 <div class="modal-overlay" id="modal-chamado">
   <div class="modal-box">
@@ -964,6 +1104,22 @@ const firebaseConfig = {
 
 const SENHAS = { Jefferson:'HmKKvMbIWD', Miguel:'MIDs4VPukV', Victoria:'v663m7w9LX', Daniel:'hUYVSKHdUe', Guilherme:'HqUZI7uQSF', Aline:'Nt5wJbXcPm' };
 const SENHA_ADMIN = '1993';
+
+const CRM_STAGES = ['Lead', 'Proposta enviada', 'Frio', 'Quente', 'Fechado', 'Perdido'];
+const CRM_STAGE_COLORS = {
+  'Lead': 'var(--text2)',
+  'Proposta enviada': 'var(--accent)',
+  'Frio': '#6b9fd4',
+  'Quente': 'var(--amber)',
+  'Fechado': 'var(--green)',
+  'Perdido': 'var(--red)'
+};
+const CRM_ORIGENS = {
+  'indicacao-arquiteto': 'Indicação — Arquiteto/Parceiro',
+  'indicacao-cliente': 'Indicação — Cliente',
+  'instagram': 'Instagram',
+  'google': 'Google/Site'
+};
 
 const STAGES = ['Novos clientes','Elaboração de projetos','Aguardando infraestrutura','Executando infraestrutura','Aguardando instalação','Instalação de equipamentos','Configuração','Obra entregue'];
 
@@ -1001,6 +1157,10 @@ let unsubs = [];
 let dragSrcStage = null;
 let dragSrcId = null;
 let pendingEquipsNovaObra = [];
+let leads = [];
+let currentLeadId = null;
+let crmDragId = null;
+let currentCrmTipo = 'home';
 let calViewDate = new Date();
 let currentFinalizarVisita = null;
 
@@ -1242,7 +1402,11 @@ const loadData = () => {
   const u4 = db.collection('equipamentos_historico').orderBy('usos', 'desc').limit(300).onSnapshot(snap => {
     equipHistorico = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   });
-  unsubs = [u1, u2, u3, u4];
+  const u5 = db.collection('crm').onSnapshot(snap => {
+    leads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    refreshCRM();
+  });
+  unsubs = [u1, u2, u3, u4, u5];
 };
 
 const saveObra = async (obra) => {
@@ -1281,13 +1445,13 @@ const navigate = (page, tipo) => {
   $$('.nav-item').forEach(n => n.classList.remove('active'));
   if (page === 'kanban' && tipo) currentKanbanTipo = tipo;
   const tipoLabel = currentKanbanTipo === 'corp' ? 'SLight Corp' : 'SLight Home';
-  const titles = { dashboard:'Dashboard', kanban: tipoLabel, agenda:'Agenda', historico:'Histórico', sac:'SAC' };
+  const titles = { dashboard:'Dashboard', kanban: tipoLabel, agenda:'Agenda', historico:'Histórico', sac:'SAC', crm:'CRM — Comercial' };
   $('#topbar-title').textContent = titles[page] || page;
   const content = $('#content');
   const pg = $('#page-' + page);
   if (pg) {
     pg.classList.add('active');
-    if (page === 'kanban') {
+    if (page === 'kanban' || page === 'crm') {
       pg.style.display = 'flex';
       content.style.padding = '0';
       content.style.overflow = 'hidden';
@@ -1310,6 +1474,7 @@ const navigate = (page, tipo) => {
   if (page === 'dashboard') renderDash();
   if (page === 'historico') renderHistorico();
   if (page === 'sac') renderSAC();
+  if (page === 'crm') renderCRM();
 };
 
 // ===================== ALERTAS DO DIA =====================
@@ -2870,6 +3035,271 @@ const renderHistorico = () => {
   `).join('');
 };
 
+// ===================== CRM =====================
+const fmtValor = (v) => v ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 0 }) : '—';
+
+const renderCRMAnalytics = () => {
+  const el = $('#crm-analytics');
+  if (!el) return;
+  const ativos = leads.filter(l => l.tipo === currentCrmTipo && l.stage !== 'Perdido');
+  const fechados = leads.filter(l => l.tipo === currentCrmTipo && l.stage === 'Fechado');
+  const totalLeads = leads.filter(l => l.tipo === currentCrmTipo).length;
+  const totalValor = ativos.reduce((s, l) => s + (Number(l.valor) || 0), 0);
+  const taxaConv = totalLeads > 0 ? Math.round((fechados.length / totalLeads) * 100) : 0;
+
+  const origemStats = {};
+  leads.filter(l => l.tipo === currentCrmTipo).forEach(l => {
+    const o = l.origem || 'outro';
+    if (!origemStats[o]) origemStats[o] = { total: 0, fechados: 0, valor: 0 };
+    origemStats[o].total++;
+    if (l.stage === 'Fechado') origemStats[o].fechados++;
+    origemStats[o].valor += Number(l.valor) || 0;
+  });
+
+  const origemCards = Object.entries(origemStats).map(([o, s]) => {
+    const conv = s.total > 0 ? Math.round((s.fechados / s.total) * 100) : 0;
+    return `<div class="crm-an-card">
+      <div class="crm-an-label">${CRM_ORIGENS[o] || o}</div>
+      <div class="crm-an-value">${s.total}</div>
+      <div class="crm-an-sub">${conv}% conv · ${fmtValor(s.valor)}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="crm-an-card">
+      <div class="crm-an-label">Pipeline ativo</div>
+      <div class="crm-an-value" style="color:var(--accent)">${fmtValor(totalValor)}</div>
+      <div class="crm-an-sub">${ativos.length} leads</div>
+    </div>
+    <div class="crm-an-card">
+      <div class="crm-an-label">Taxa de conversão</div>
+      <div class="crm-an-value" style="color:var(--green)">${taxaConv}%</div>
+      <div class="crm-an-sub">${fechados.length} fechados</div>
+    </div>
+    ${origemCards}
+  `;
+};
+
+const renderCRM = () => {
+  renderCRMAnalytics();
+  const board = $('#crm-board');
+  if (!board) return;
+  board.innerHTML = '';
+
+  CRM_STAGES.forEach(stage => {
+    const stageLeads = leads.filter(l => l.tipo === currentCrmTipo && l.stage === stage);
+    const totalCol = stageLeads.reduce((s, l) => s + (Number(l.valor) || 0), 0);
+    const col = document.createElement('div');
+    col.className = 'crm-col';
+    col.dataset.stage = stage;
+    col.innerHTML = `
+      <div class="crm-col-header">
+        <div class="crm-col-title" style="color:${CRM_STAGE_COLORS[stage]}">${stage}</div>
+        <div class="crm-col-valor">${totalCol > 0 ? fmtValor(totalCol) : '—'}</div>
+        <div class="crm-col-count">${stageLeads.length} lead${stageLeads.length !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="crm-cards" id="crm-cards-${stage.replace(/\s/g,'-')}"></div>
+    `;
+    const cardsEl = col.querySelector('.crm-cards');
+    if (stageLeads.length === 0) {
+      cardsEl.innerHTML = '<div style="text-align:center;padding:14px;color:var(--text3);font-size:11px">Nenhum lead</div>';
+    } else {
+      stageLeads.forEach(l => {
+        const card = document.createElement('div');
+        card.className = 'crm-card';
+        card.draggable = true;
+        card.dataset.id = l.id;
+        const origemLabel = CRM_ORIGENS[l.origem] || l.origem || '';
+        const origemClass = 'crm-origem-' + (l.origem || 'outro').replace('/', '-');
+        card.innerHTML = `
+          <div class="crm-card-nome">${l.nome || '—'}</div>
+          ${origemLabel ? `<div><span class="crm-origem-badge ${origemClass}">${origemLabel}</span></div>` : ''}
+          ${l.valor ? `<div class="crm-card-valor">${fmtValor(l.valor)}</div>` : ''}
+          <div class="crm-card-meta">${l.resp || ''} · ${l.dt ? new Date(l.dt).toLocaleDateString('pt-BR') : ''}</div>
+        `;
+        card.addEventListener('click', () => openLead(l.id));
+        card.addEventListener('dragstart', () => { card.classList.add('dragging'); crmDragId = l.id; });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        cardsEl.appendChild(card);
+      });
+    }
+    col.addEventListener('dragover', (e) => { e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!crmDragId) return;
+      const lead = leads.find(x => x.id === crmDragId);
+      if (!lead || lead.stage === stage) return;
+      lead.stage = stage;
+      await db.collection('crm').doc(lead.id).set({ stage }, { merge: true });
+      crmDragId = null;
+      renderCRM();
+    });
+    board.appendChild(col);
+  });
+};
+
+const openLead = (id) => {
+  const lead = leads.find(l => l.id === id);
+  if (!lead) return;
+  currentLeadId = id;
+  const origemLabel = CRM_ORIGENS[lead.origem] || lead.origem || '';
+  const origemClass = 'crm-origem-' + (lead.origem || 'outro').replace('/', '-');
+  $('#ml-nome').textContent = lead.nome || '—';
+  $('#ml-origem-sub').innerHTML = origemLabel ? `<span class="crm-origem-badge ${origemClass}">${origemLabel}</span>` : '';
+  $('#ml-stage-badge').textContent = lead.stage;
+  $('#ml-stage-badge').style.cssText = `background:rgba(79,142,247,0.15);color:${CRM_STAGE_COLORS[lead.stage]};display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:600;margin-top:6px`;
+  $('#ml-converter').style.display = lead.stage === 'Fechado' ? 'inline-flex' : 'none';
+  const isCorp = (lead.tipo || 'home') === 'corp';
+  $('#ml-mover-tipo').innerHTML = isCorp ? '<i class="ti ti-home"></i> Mover para Home' : '<i class="ti ti-building"></i> Mover para Corp';
+
+  const renderLeadTab = (tab) => {
+    const body = $('#ml-body');
+    $$('.modal-tab[data-tab]').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    if (tab === 'ml-info') {
+      body.innerHTML = `
+        <div class="form-row">
+          <div class="form-field">
+            <label>Nome / Empresa</label>
+            <input type="text" id="ml-nome-input" value="${lead.nome || ''}" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
+          </div>
+          <div class="form-field">
+            <label>Telefone</label>
+            <input type="tel" id="ml-telefone" value="${lead.telefone || ''}" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Valor estimado (R$)</label>
+            <input type="number" id="ml-valor" value="${lead.valor || ''}" min="0" step="100" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
+          </div>
+          <div class="form-field">
+            <label>Responsável</label>
+            <select id="ml-resp" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
+              ${['Jefferson','Miguel','Victoria','Daniel','Guilherme','Aline'].map(u => `<option ${lead.resp === u ? 'selected' : ''}>${u}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Origem</label>
+            <select id="ml-origem" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
+              ${Object.entries(CRM_ORIGENS).map(([v,l]) => `<option value="${v}" ${lead.origem === v ? 'selected' : ''}>${l}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Estágio</label>
+            <select id="ml-stage-select" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
+              ${CRM_STAGES.map(s => `<option ${lead.stage === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Descrição</label>
+          <textarea id="ml-desc" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;resize:vertical;min-height:80px;outline:none;width:100%;margin-top:4px">${lead.descricao || ''}</textarea>
+        </div>
+        <div class="separator" style="margin:14px 0"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Novo contato</div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Anotação</label>
+            <input type="text" id="ml-contato-msg" placeholder="O que foi discutido..." style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
+          </div>
+          <div class="form-field" style="flex:0 0 auto">
+            <label>&nbsp;</label>
+            <button class="btn-sm btn-accent" id="ml-add-contato" style="height:36px"><i class="ti ti-plus"></i> Registrar</button>
+          </div>
+        </div>
+        ${(lead.contatos || []).length > 0 ? `
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+          ${[...(lead.contatos || [])].reverse().map(c => `
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px">
+              <div style="font-size:12px;color:var(--text)">${c.msg}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:3px">${c.quem} · ${c.dt ? new Date(c.dt).toLocaleDateString('pt-BR') : ''}</div>
+            </div>
+          `).join('')}
+        </div>` : ''}
+      `;
+      $('#ml-add-contato').addEventListener('click', async () => {
+        const msg = $('#ml-contato-msg').value.trim();
+        if (!msg) return;
+        if (!lead.contatos) lead.contatos = [];
+        lead.contatos.push({ quem: currentUser, dt: new Date().toISOString(), msg });
+        await db.collection('crm').doc(lead.id).set({ contatos: lead.contatos }, { merge: true });
+        renderLeadTab('ml-info');
+      });
+    } else {
+      const hist = [...(lead.contatos || [])].reverse();
+      body.innerHTML = hist.length === 0
+        ? '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Sem histórico de contatos.</div>'
+        : '<div style="display:flex;flex-direction:column;gap:8px">' + hist.map(c => `
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
+              <div style="font-size:13px;color:var(--text)">${c.msg}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">${c.quem} · ${c.dt ? new Date(c.dt).toLocaleString('pt-BR') : ''}</div>
+            </div>`).join('') + '</div>';
+    }
+  };
+
+  $$('#modal-lead .modal-tab').forEach(tab => {
+    tab.onclick = () => renderLeadTab(tab.dataset.tab);
+  });
+  renderLeadTab('ml-info');
+
+  $('#ml-save').onclick = async () => {
+    lead.nome = $('#ml-nome-input').value.trim();
+    lead.telefone = $('#ml-telefone').value.trim();
+    lead.valor = $('#ml-valor').value ? Number($('#ml-valor').value) : 0;
+    lead.resp = $('#ml-resp').value;
+    lead.origem = $('#ml-origem').value;
+    lead.stage = $('#ml-stage-select').value;
+    lead.descricao = $('#ml-desc').value.trim();
+    await db.collection('crm').doc(lead.id).set(lead, { merge: true });
+    $('#modal-lead').classList.remove('show');
+    showToast('Lead salvo!', 'green');
+  };
+
+  $('#ml-mover-tipo').onclick = async () => {
+    lead.tipo = (lead.tipo || 'home') === 'corp' ? 'home' : 'corp';
+    await db.collection('crm').doc(lead.id).set({ tipo: lead.tipo }, { merge: true });
+    $('#modal-lead').classList.remove('show');
+  };
+
+  $('#ml-del').onclick = async () => {
+    const senha = prompt('Senha de administrador:');
+    if (senha !== SENHA_ADMIN) { alert('Senha incorreta.'); return; }
+    if (!confirm(`Excluir lead "${lead.nome}"?`)) return;
+    await db.collection('crm').doc(lead.id).delete();
+    $('#modal-lead').classList.remove('show');
+    showToast('Lead excluído.', 'red');
+  };
+
+  $('#ml-converter').onclick = async () => {
+    if (!confirm(`Converter "${lead.nome}" em obra? Isso criará uma nova obra no Kanban.`)) return;
+    const id = genId();
+    const novaObra = {
+      name: lead.nome, resp: lead.resp, tipo: lead.tipo || 'home',
+      stage: 'Novos clientes', proposta: '', contatos: [], hist: [],
+      equips: [], clPorEtapa: {}, proximoContato: ''
+    };
+    await db.collection('obras').doc(id).set(novaObra);
+    lead.obraId = id;
+    lead.stage = 'Fechado';
+    await db.collection('crm').doc(lead.id).set({ obraId: id, stage: 'Fechado' }, { merge: true });
+    await addLog(`Lead "${lead.nome}" convertido em obra via CRM`);
+    $('#modal-lead').classList.remove('show');
+    showToast('Obra criada!', 'green');
+    navigate('kanban', lead.tipo || 'home');
+  };
+
+  $('#modal-lead').classList.add('show');
+};
+
+const refreshCRM = () => {
+  const activeEl = $('#page-crm');
+  if (activeEl && activeEl.classList.contains('active')) renderCRM();
+};
+
 // ===================== SAC =====================
 const renderSACTipo = (tipo) => {
   const cor = tipo === 'corp' ? 'var(--purple)' : 'var(--accent)';
@@ -3409,6 +3839,57 @@ const bindEvents = () => {
     showToast('Visita agendada!', 'green');
     renderAgenda();
   });
+
+  // CRM tipo tabs
+  $$('.crm-tipo-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      currentCrmTipo = tab.dataset.crmTipo;
+      $$('.crm-tipo-tab').forEach(t => t.classList.toggle('active', t.dataset.crmTipo === currentCrmTipo));
+      renderCRM();
+    });
+  });
+
+  // Novo Lead
+  $('#btn-novo-lead').addEventListener('click', () => {
+    $('#nl-nome').value = '';
+    $('#nl-telefone').value = '';
+    $('#nl-valor').value = '';
+    $('#nl-desc').value = '';
+    document.querySelector('input[name="nl-tipo"][value="' + currentCrmTipo + '"]').checked = true;
+    $('#modal-add-lead').classList.add('show');
+  });
+  $('#add-lead-close').addEventListener('click', () => $('#modal-add-lead').classList.remove('show'));
+  $('#add-lead-cancel').addEventListener('click', () => $('#modal-add-lead').classList.remove('show'));
+  $('#modal-add-lead').addEventListener('click', (e) => { if (e.target === $('#modal-add-lead')) $('#modal-add-lead').classList.remove('show'); });
+  $('#add-lead-confirm').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    if (btn.disabled) return;
+    const nome = $('#nl-nome').value.trim();
+    if (!nome) return alert('Informe o nome do lead.');
+    btn.disabled = true;
+    const tipo = document.querySelector('input[name="nl-tipo"]:checked').value;
+    const id = genId();
+    await db.collection('crm').doc(id).set({
+      nome,
+      telefone: $('#nl-telefone').value.trim(),
+      valor: $('#nl-valor').value ? Number($('#nl-valor').value) : 0,
+      resp: $('#nl-resp').value,
+      tipo,
+      origem: $('#nl-origem').value,
+      descricao: $('#nl-desc').value.trim(),
+      stage: 'Lead',
+      dt: new Date().toISOString(),
+      contatos: [],
+      obraId: ''
+    });
+    btn.disabled = false;
+    $('#modal-add-lead').classList.remove('show');
+    showToast('Lead criado!', 'green');
+  });
+
+  // Modal Lead
+  $('#ml-close').addEventListener('click', () => $('#modal-lead').classList.remove('show'));
+  $('#modal-lead').addEventListener('click', (e) => { if (e.target === $('#modal-lead')) $('#modal-lead').classList.remove('show'); });
 
   // SAC modal close
   $('#mc-close').addEventListener('click', () => $('#modal-chamado').classList.remove('show'));
