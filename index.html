@@ -895,7 +895,8 @@
     </div>
     <div class="modal-body">
       <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Checklist da etapa</div>
-      <div id="fv-checklist" style="margin-bottom:16px"></div>
+      <div id="fv-checklist" style="margin-bottom:8px"></div>
+      <div id="fv-qty-warning" style="display:none;margin-bottom:12px;padding:8px 12px;background:rgba(245,166,35,0.12);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:12px;color:var(--amber)"></div>
       <div class="separator"></div>
       <div class="form-field" style="margin-top:14px">
         <label style="font-size:12px;font-weight:600;color:var(--text2)">O que foi feito nesta visita</label>
@@ -2499,31 +2500,100 @@ const openFinalizarVisita = (obra, contatoIdx) => {
   const clItems = getClItems(obra, obra.stage);
   currentFinalizarVisita.clItems = clItems;
 
+  const updateFvQtyWarning = () => {
+    const overItems = clItems.filter(i =>
+      i.qtdPrev !== undefined && i.qtdPrev !== '' &&
+      i.qtdReal !== undefined && i.qtdReal !== '' &&
+      Number(i.qtdReal) > Number(i.qtdPrev)
+    );
+    const warn = $('#fv-qty-warning');
+    if (overItems.length > 0) {
+      warn.style.display = 'block';
+      warn.innerHTML = '<strong>⚠ Quantidade acima do previsto</strong><br>' +
+        overItems.map(i => {
+          const nome = i.name.replace(/^\[[^\]]+\]\s*(Instalar|Infraestrutura):\s*/i, '');
+          const un = i.unidade ? ' ' + i.unidade : '';
+          return `${nome}: previsto ${i.qtdPrev}${un}, utilizado ${i.qtdReal}${un}`;
+        }).join('<br>');
+    } else {
+      warn.style.display = 'none';
+    }
+  };
+
   if (clItems.length === 0) {
     clContainer.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nenhum item de checklist para esta etapa.</div>';
   } else {
     clItems.forEach((item, idx) => {
+      const hasQtd = item.qtdPrev !== undefined && item.qtdPrev !== '';
+      const qtdPrevNum = hasQtd ? Number(item.qtdPrev) : null;
+      const qtdRealVal = (item.qtdReal !== undefined && item.qtdReal !== '') ? Number(item.qtdReal) : '';
+      const isOver = hasQtd && qtdRealVal !== '' && qtdRealVal > qtdPrevNum;
+
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)';
+
       row.innerHTML = `
         <div style="flex:1;font-size:12px;color:${item.inherited ? 'var(--amber)' : 'var(--text)'}">
           ${item.inherited ? '<span style="font-size:10px;color:var(--amber);margin-right:4px">↑ ant.</span>' : ''}
           ${item.name.replace(/^\[[^\]]+\]\s*(Instalar|Infraestrutura):\s*/i, '')}
         </div>
+        ${hasQtd ? `
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <input type="number" class="fv-qty-input" min="0" step="0.01"
+            value="${qtdRealVal !== '' ? qtdRealVal : ''}"
+            style="width:60px;background:var(--bg4);border:1px solid ${isOver ? 'var(--amber)' : 'var(--border2)'};border-radius:6px;color:var(--text);padding:4px 6px;font-size:12px;font-family:inherit;outline:none;text-align:center">
+          <span style="font-size:11px;color:var(--text3)">/ ${qtdPrevNum} ${item.unidade || ''}</span>
+          <span class="fv-qty-badge" style="font-size:11px;font-weight:500;color:var(--amber);display:${isOver ? 'inline' : 'none'};white-space:nowrap">⚠ ${qtdRealVal}/${qtdPrevNum}${item.unidade || ''}</span>
+        </div>` : ''}
         <div style="display:flex;gap:3px">
           <button class="cl-btn cl-btn-ok ${item.status === 'concluido' ? 'active' : ''}" data-s="concluido">✓</button>
           <button class="cl-btn cl-btn-part ${item.status === 'parcial' ? 'active' : ''}" data-s="parcial">~</button>
           <button class="cl-btn cl-btn-pend ${item.status === 'pendente' ? 'active' : ''}" data-s="pendente">✗</button>
         </div>
       `;
+
       row.querySelectorAll('.cl-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          clItems[idx].status = btn.dataset.s;
-          row.querySelectorAll('.cl-btn').forEach(b => b.classList.toggle('active', b.dataset.s === btn.dataset.s));
+          const s = btn.dataset.s;
+          clItems[idx].status = s;
+          if (hasQtd) {
+            const inp = row.querySelector('.fv-qty-input');
+            if (s === 'concluido' && (clItems[idx].qtdReal === undefined || clItems[idx].qtdReal === '')) {
+              clItems[idx].qtdReal = qtdPrevNum;
+              if (inp) inp.value = qtdPrevNum;
+            } else if (s === 'pendente') {
+              clItems[idx].qtdReal = '';
+              if (inp) inp.value = '';
+            }
+          }
+          row.querySelectorAll('.cl-btn').forEach(b => b.classList.toggle('active', b.dataset.s === s));
+          updateFvQtyWarning();
         });
       });
+
+      if (hasQtd) {
+        const qtyInput = row.querySelector('.fv-qty-input');
+        const badge = row.querySelector('.fv-qty-badge');
+        qtyInput.addEventListener('input', () => {
+          const val = qtyInput.value !== '' ? Number(qtyInput.value) : '';
+          clItems[idx].qtdReal = val;
+          const over = val !== '' && val > qtdPrevNum;
+          qtyInput.style.borderColor = over ? 'var(--amber)' : 'var(--border2)';
+          badge.textContent = over ? `⚠ ${val}/${qtdPrevNum}${item.unidade || ''}` : '';
+          badge.style.display = over ? 'inline' : 'none';
+          if (val !== '') {
+            if (val >= qtdPrevNum) clItems[idx].status = 'concluido';
+            else if (val > 0) clItems[idx].status = 'parcial';
+            else clItems[idx].status = 'pendente';
+          }
+          row.querySelectorAll('.cl-btn').forEach(b => b.classList.toggle('active', b.dataset.s === clItems[idx].status));
+          updateFvQtyWarning();
+        });
+      }
+
       clContainer.appendChild(row);
     });
+    updateFvQtyWarning();
   }
 
   $('#modal-finalizar-visita').classList.add('show');
