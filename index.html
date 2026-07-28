@@ -3642,6 +3642,36 @@ const openChamado = (id) => {
         `).join('')}
       </div>
     </div>
+
+    <div style="margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:10px"><i class="ti ti-calendar-plus" style="margin-right:4px"></i>Visita na Agenda</div>
+      ${c.agendaVisita ? `
+        <div id="mc-agenda-view" style="background:var(--bg3);border:1px solid ${c.agendaVisita.realizada ? 'var(--border)' : 'var(--accent)'};border-radius:var(--r);padding:12px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600;color:${c.agendaVisita.realizada ? 'var(--text2)' : 'var(--accent)'}">
+              ${c.agendaVisita.realizada ? '✓ Realizada — ' : ''}${c.agendaVisita.data ? new Date(c.agendaVisita.data + 'T00:00').toLocaleDateString('pt-BR') : ''}${c.agendaVisita.hora ? ' às ' + c.agendaVisita.hora : ''}
+            </div>
+            ${c.agendaVisita.desc ? `<div style="font-size:12px;color:var(--text2);margin-top:2px">${c.agendaVisita.desc}</div>` : ''}
+          </div>
+          ${!c.agendaVisita.realizada ? `<button class="btn-sm" id="mc-agenda-realizada" style="flex-shrink:0"><i class="ti ti-check"></i> Marcar realizada</button>` : ''}
+          <button class="btn-sm" id="mc-agenda-remover" style="flex-shrink:0;color:var(--text2)"><i class="ti ti-trash"></i></button>
+        </div>
+      ` : `
+        <div id="mc-agenda-form" style="border:1px dashed var(--border);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-field" style="margin:0"><label>Data</label><input type="date" id="mc-ag-data"></div>
+            <div class="form-field" style="margin:0"><label>Hora</label><input type="time" id="mc-ag-hora" value="09:00"></div>
+          </div>
+          <div class="form-field" style="margin:0">
+            <label>Descrição</label>
+            <input type="text" id="mc-ag-desc" placeholder="O que será feito..." value="${(c.problema || '').replace(/"/g, '&quot;')}">
+          </div>
+          <div style="display:flex;justify-content:flex-end">
+            <button class="btn-sm btn-accent" id="mc-agenda-salvar"><i class="ti ti-calendar-plus"></i> Agendar visita</button>
+          </div>
+        </div>
+      `}
+    </div>
   `;
 
   // Toggle edição
@@ -3674,6 +3704,37 @@ const openChamado = (id) => {
       openChamado(id);
     });
   });
+
+  // Agenda visita no chamado
+  const agSalvarBtn = body.querySelector('#mc-agenda-salvar');
+  if (agSalvarBtn) {
+    agSalvarBtn.addEventListener('click', async () => {
+      const data = body.querySelector('#mc-ag-data').value;
+      if (!data) return alert('Informe a data da visita.');
+      const hora = body.querySelector('#mc-ag-hora').value;
+      const desc = body.querySelector('#mc-ag-desc').value.trim();
+      await db.collection('chamados').doc(c.id).set({ agendaVisita: { data, hora, desc: desc || c.problema, realizada: false } }, { merge: true });
+      renderAgenda();
+      openChamado(id);
+    });
+  }
+  const agRealizadaBtn = body.querySelector('#mc-agenda-realizada');
+  if (agRealizadaBtn) {
+    agRealizadaBtn.addEventListener('click', async () => {
+      await db.collection('chamados').doc(c.id).set({ agendaVisita: { ...c.agendaVisita, realizada: true } }, { merge: true });
+      renderAgenda();
+      openChamado(id);
+    });
+  }
+  const agRemoverBtn = body.querySelector('#mc-agenda-remover');
+  if (agRemoverBtn) {
+    agRemoverBtn.addEventListener('click', async () => {
+      if (!confirm('Remover visita da agenda?')) return;
+      await db.collection('chamados').doc(c.id).set({ agendaVisita: null }, { merge: true });
+      renderAgenda();
+      openChamado(id);
+    });
+  }
 
   body.querySelector('#mc-diary-btn').addEventListener('click', async () => {
     const txt = body.querySelector('#mc-diary-input').value.trim();
