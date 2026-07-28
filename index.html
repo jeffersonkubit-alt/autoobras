@@ -1199,7 +1199,7 @@ const CATS = {
 
 const CL_BASE = {
   'Novos clientes': ['Criar grupo de WhatsApp','Projetos disponíveis'],
-  'Elaboração de projetos': ['Reunião de alinhamento','Projeto enviado / aguardando validação','Projeto aprovado'],
+  'Elaboração de projetos': ['Projeto enviado / aguardando validação','Reunião de alinhamento','Projeto aprovado'],
   'Aguardando instalação': ['Materiais comprados e entregues','Data de instalação agendada','Equipe designada'],
   'Configuração': ['Programação da central concluída','App configurado para o cliente','Cenas e automações testadas','Testes de conectividade OK'],
   'Obra entregue': ['Manual do usuário entregue','Treinamento realizado','Termo de entrega assinado','Garantia registrada'],
@@ -1384,6 +1384,13 @@ const getClItems = (obra, stage) => {
       if (!existingNames.has(b.name)) {
         items.push({ ...b, status: 'pendente', obs: '', inherited: false });
       }
+    });
+    // Reordenar para seguir a ordem do CL_BASE, itens dinâmicos ficam ao final
+    const baseOrder = new Map(base.map((b, i) => [b.name, i]));
+    items.sort((a, b) => {
+      const ai = baseOrder.has(a.name) ? baseOrder.get(a.name) : Infinity;
+      const bi = baseOrder.has(b.name) ? baseOrder.get(b.name) : Infinity;
+      return ai - bi;
     });
   } else {
     items = base.map(b => ({ ...b, status: 'pendente', obs: '', inherited: false }));
