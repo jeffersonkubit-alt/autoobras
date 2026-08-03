@@ -435,6 +435,7 @@
   .crm-origem-badge { display:inline-block; font-size:10px; font-weight:600; padding:2px 7px; border-radius:5px; margin-bottom:5px; }
   .crm-origem-indicacao-arquiteto { background:rgba(167,139,250,0.15); color:var(--purple); }
   .crm-origem-indicacao-cliente { background:rgba(79,142,247,0.15); color:var(--accent); }
+  .crm-origem-indicacao-outros { background:rgba(156,163,175,0.15); color:var(--text2); }
   .crm-origem-instagram { background:rgba(245,101,101,0.15); color:var(--red); }
   .crm-origem-google { background:rgba(62,207,142,0.15); color:var(--green); }
 
@@ -1095,6 +1096,7 @@
         <select id="nl-origem" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
           <option value="indicacao-arquiteto">Indicação — Arquiteto/Parceiro</option>
           <option value="indicacao-cliente">Indicação — Cliente</option>
+          <option value="indicacao-outros">Indicação — Outros</option>
           <option value="instagram">Instagram</option>
           <option value="google">Google/Site</option>
         </select>
@@ -1187,6 +1189,7 @@ const CRM_STAGE_COLORS = {
 const CRM_ORIGENS = {
   'indicacao-arquiteto': 'Indicação — Arquiteto/Parceiro',
   'indicacao-cliente': 'Indicação — Cliente',
+  'indicacao-outros': 'Indicação — Outros',
   'instagram': 'Instagram',
   'google': 'Google/Site'
 };
