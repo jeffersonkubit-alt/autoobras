@@ -3264,11 +3264,19 @@ const renderCRM = () => {
         card.dataset.id = l.id;
         const origemLabel = CRM_ORIGENS[l.origem] || l.origem || '';
         const origemClass = 'crm-origem-' + (l.origem || 'outro').replace('/', '-');
+        const _proxCrm = l.proximoContato ? (() => {
+          const d = new Date(l.proximoContato + 'T00:00'); d.setHours(0,0,0,0);
+          const hoje = new Date(); hoje.setHours(0,0,0,0);
+          const atrasado = d < hoje;
+          const label = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+          return `<div style="font-size:11px;font-weight:600;margin-top:4px;color:${atrasado ? 'var(--red)' : 'var(--amber)'}"><i class="ti ti-calendar-due" style="font-size:10px"></i> ${atrasado ? '⚠ ' : ''}${label}</div>`;
+        })() : '';
         card.innerHTML = `
           <div class="crm-card-nome">${l.nome || '—'}</div>
           ${origemLabel ? `<div><span class="crm-origem-badge ${origemClass}">${origemLabel}</span></div>` : ''}
           ${l.valor ? `<div class="crm-card-valor">${fmtValor(l.valor)}</div>` : ''}
           <div class="crm-card-meta">${l.resp || ''} · ${l.dt ? new Date(l.dt).toLocaleDateString('pt-BR') : ''}</div>
+          ${_proxCrm}
         `;
         card.addEventListener('click', () => openLead(l.id));
         card.addEventListener('dragstart', () => { card.classList.add('dragging'); crmDragId = l.id; });
@@ -3330,7 +3338,7 @@ const openLead = (id) => {
           <div class="form-field">
             <label>Responsável</label>
             <select id="ml-resp" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;outline:none;width:100%">
-              ${['Jefferson','Miguel','Victoria','Daniel','Guilherme','Aline'].map(u => `<option ${lead.resp === u ? 'selected' : ''}>${u}</option>`).join('')}
+              ${['Jefferson','Miguel','Victoria','Daniel','Guilherme','Aline','Jeniffer'].map(u => `<option ${lead.resp === u ? 'selected' : ''}>${u}</option>`).join('')}
             </select>
           </div>
         </div>
@@ -3351,6 +3359,10 @@ const openLead = (id) => {
         <div class="form-field">
           <label>Descrição</label>
           <textarea id="ml-desc" style="background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px;font-size:13px;resize:vertical;min-height:80px;outline:none;width:100%;margin-top:4px">${lead.descricao || ''}</textarea>
+        </div>
+        <div class="form-field">
+          <label>Próximo contato</label>
+          <input type="date" id="ml-prox-contato" value="${lead.proximoContato || ''}" style="width:100%">
         </div>
         <div class="separator" style="margin:14px 0"></div>
         <div style="font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">WhatsApp</div>
@@ -3440,6 +3452,7 @@ const openLead = (id) => {
     lead.origem = $('#ml-origem').value;
     lead.stage = $('#ml-stage-select').value;
     lead.descricao = $('#ml-desc').value.trim();
+    lead.proximoContato = $('#ml-prox-contato').value || null;
     await db.collection('crm').doc(lead.id).set(lead, { merge: true });
     $('#modal-lead').classList.remove('show');
     showToast('Lead salvo!', 'green');
