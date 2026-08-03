@@ -417,9 +417,11 @@
   .crm-an-label { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:3px; }
   .crm-an-value { font-size:18px; font-weight:700; color:var(--text); }
   .crm-an-sub { font-size:11px; color:var(--text3); margin-top:2px; }
-  .crm-wrap { flex:1; overflow-x:auto; overflow-y:hidden; padding:14px 16px; min-height:0; }
+  .crm-wrap { flex:0 0 auto; overflow-x:auto; overflow-y:hidden; padding:14px 16px; height:calc(100vh - 210px); }
   .crm-board { display:flex; gap:8px; align-items:flex-start; height:100%; }
-  .crm-col { flex:0 0 200px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); display:flex; flex-direction:column; max-height:calc(100vh - 210px); overflow:hidden; }
+  .crm-col { flex:0 0 200px; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r); display:flex; flex-direction:column; max-height:calc(100vh - 230px); overflow:hidden; }
+  .crm-cal-section { flex-shrink:0; padding:20px; border-top:1px solid var(--border); }
+  .crm-cal-title { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px;display:flex;align-items:center;gap:6px; }
   .crm-col.drag-over { border-color:var(--accent); background:var(--bg3); }
   .crm-col-header { padding:10px 12px; border-bottom:1px solid var(--border); flex-shrink:0; }
   .crm-col-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:4px; }
@@ -760,7 +762,7 @@
       </div>
 
       <!-- CRM -->
-      <div id="page-crm" class="page" style="flex-direction:column;overflow:hidden">
+      <div id="page-crm" class="page" style="flex-direction:column;overflow-y:auto;overflow-x:hidden">
         <div class="section-header" style="flex-shrink:0">
           <div class="section-title">CRM — Comercial</div>
           <div style="display:flex;gap:8px;align-items:center">
@@ -775,6 +777,7 @@
         <div class="crm-wrap">
           <div class="crm-board" id="crm-board"></div>
         </div>
+        <div class="crm-cal-section" id="crm-cal-section"></div>
       </div>
 
     </div>
@@ -1235,6 +1238,7 @@ let currentLeadId = null;
 let crmDragId = null;
 let currentCrmTipo = 'home';
 let calViewDate = new Date();
+let crmCalViewDate = new Date();
 let currentFinalizarVisita = null;
 
 // ===================== HELPERS =====================
@@ -1535,7 +1539,8 @@ const navigate = (page, tipo) => {
     if (page === 'kanban' || page === 'crm') {
       pg.style.display = 'flex';
       content.style.padding = '0';
-      content.style.overflow = 'hidden';
+      content.style.overflow = page === 'crm' ? 'hidden' : 'hidden';
+      if (page === 'crm') { content.style.overflowY = 'hidden'; pg.style.overflowY = 'auto'; }
     } else {
       content.style.padding = '24px';
       content.style.overflow = '';
@@ -3233,6 +3238,82 @@ const renderCRMAnalytics = () => {
   `;
 };
 
+const renderCRMCalendar = () => {
+  const sec = $('#crm-cal-section');
+  if (!sec) return;
+  const crmLeads = leads.filter(l => l.tipo === currentCrmTipo && l.proximoContato);
+  const wrap = document.createElement('div');
+  wrap.className = 'cal-wrap';
+
+  const drawCal = () => {
+    const year = crmCalViewDate.getFullYear();
+    const month = crmCalViewDate.getMonth();
+    const monthLabel = crmCalViewDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dow = today.getDay();
+    const weekStart = new Date(today); weekStart.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+    const firstDay = new Date(year, month, 1);
+    const firstDow = firstDay.getDay();
+    const gridStart = new Date(firstDay); gridStart.setDate(firstDay.getDate() - (firstDow === 0 ? 6 : firstDow - 1));
+    const lastDay = new Date(year, month + 1, 0);
+    const lastDow = lastDay.getDay();
+    const gridEnd = new Date(lastDay); gridEnd.setDate(lastDay.getDate() + (lastDow === 0 ? 0 : 7 - lastDow));
+
+    wrap.innerHTML = `
+      <div class="cal-header">
+        <button class="cal-nav" id="crm-cal-prev"><i class="ti ti-chevron-left"></i></button>
+        <div class="cal-month-label">${monthLabel}</div>
+        <button class="cal-nav" id="crm-cal-next"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div class="cal-grid" id="crm-cal-grid">
+        <div class="cal-weekday">Seg</div><div class="cal-weekday">Ter</div>
+        <div class="cal-weekday">Qua</div><div class="cal-weekday">Qui</div>
+        <div class="cal-weekday">Sex</div><div class="cal-weekday">Sáb</div>
+        <div class="cal-weekday">Dom</div>
+      </div>
+    `;
+    const grid = wrap.querySelector('#crm-cal-grid');
+    let cur = new Date(gridStart);
+    while (cur <= gridEnd) {
+      const d = new Date(cur); d.setHours(0,0,0,0);
+      const isToday = d.getTime() === today.getTime();
+      const inCurWeek = d >= weekStart && d <= weekEnd;
+      const inMonth = d.getMonth() === month;
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const dayLeads = crmLeads.filter(l => l.proximoContato === dateStr);
+      const cell = document.createElement('div');
+      cell.className = 'cal-day' + (isToday ? ' today' : '') + (inCurWeek ? ' cur-week' : '') + (!inMonth ? ' other-month' : '');
+      const numDiv = document.createElement('div');
+      numDiv.className = 'cal-day-num';
+      numDiv.textContent = d.getDate();
+      cell.appendChild(numDiv);
+      dayLeads.forEach(l => {
+        const ev = document.createElement('div');
+        const isPast = d < today;
+        ev.className = 'cal-event cal-event-home';
+        if (isPast) ev.style.borderLeft = '2px solid var(--amber)';
+        ev.textContent = (isPast ? '⚠ ' : '') + l.nome;
+        ev.title = `${l.nome} — ${l.stage} · ${l.resp || ''}`;
+        ev.addEventListener('click', (e) => { e.stopPropagation(); openLead(l.id); });
+        cell.appendChild(ev);
+      });
+      grid.appendChild(cell);
+      cur.setDate(cur.getDate() + 1);
+    }
+    wrap.querySelector('#crm-cal-prev').addEventListener('click', () => { crmCalViewDate = new Date(year, month - 1, 1); drawCal(); });
+    wrap.querySelector('#crm-cal-next').addEventListener('click', () => { crmCalViewDate = new Date(year, month + 1, 1); drawCal(); });
+  };
+
+  drawCal();
+  sec.innerHTML = '';
+  const title = document.createElement('div');
+  title.className = 'crm-cal-title';
+  title.innerHTML = '<i class="ti ti-calendar-due"></i> Agenda de contatos';
+  sec.appendChild(title);
+  sec.appendChild(wrap);
+};
+
 const renderCRM = () => {
   renderCRMAnalytics();
   const board = $('#crm-board');
@@ -3299,6 +3380,7 @@ const renderCRM = () => {
     });
     board.appendChild(col);
   });
+  renderCRMCalendar();
 };
 
 const openLead = (id) => {
